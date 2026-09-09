@@ -16,6 +16,7 @@ FRAME_WIDTH = 96
 FRAME_HEIGHT = 104
 ROWS = 3
 COLS = 5
+FRAME_MARGIN = 2
 
 
 def remove_checkerboard(image: Image.Image) -> Image.Image:
@@ -74,10 +75,30 @@ def make_compact_sheet(source: Path) -> None:
                 (col + 1) * source_width // COLS,
                 (row + 1) * source_height // ROWS,
             )
-            frame = source_image.crop(box).resize((FRAME_WIDTH, FRAME_HEIGHT), Image.Resampling.NEAREST)
+            frame = normalize_frame(source_image.crop(box))
             compact.alpha_composite(frame, (col * FRAME_WIDTH, row * FRAME_HEIGHT))
     ASSET_DIR.mkdir(parents=True, exist_ok=True)
     compact.save(SHEET_PATH)
+
+
+def normalize_frame(frame: Image.Image) -> Image.Image:
+    """Keep the art's aspect ratio while giving every pose the same visible height."""
+    bbox = frame.getbbox()
+    output = Image.new("RGBA", (FRAME_WIDTH, FRAME_HEIGHT), (0, 0, 0, 0))
+    if bbox is None:
+        return output
+
+    art = frame.crop(bbox)
+    max_width = FRAME_WIDTH - FRAME_MARGIN * 2
+    max_height = FRAME_HEIGHT - FRAME_MARGIN * 2
+    scale = min(max_width / art.width, max_height / art.height)
+    target_size = (max(1, round(art.width * scale)), max(1, round(art.height * scale)))
+    art = art.resize(target_size, Image.Resampling.NEAREST)
+    output.alpha_composite(
+        art,
+        ((FRAME_WIDTH - art.width) // 2, FRAME_HEIGHT - art.height - FRAME_MARGIN),
+    )
+    return output
 
 
 def frame_bytes(sheet: Image.Image, row: int, col: int) -> bytes:

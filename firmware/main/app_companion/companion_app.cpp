@@ -7,6 +7,7 @@
 #include "nvs.h"
 #include "esp_brookesia.hpp"
 #include "app_xiaolan/assets/xiaolan_assets.hpp"
+#include "device_config.h"
 
 #include <cstdio>
 #include <ctime>
@@ -143,6 +144,64 @@ void CompanionApp::loadBridgeConfig()
     _token[0] = '\0';
     _port = 3082;
 
+    device_service_config_t saved;
+    device_config_load(&saved);
+    if (saved.bridge_host[0]) {
+        snprintf(_host, sizeof(_host), "%s", saved.bridge_host);
+        _port = saved.bridge_port > 0 ? saved.bridge_port : 3082;
+        snprintf(_token, sizeof(_token), "%s", saved.bridge_token);
+    }
+
+    if (!_host[0] || !_token[0]) {
+        nvs_handle_t nvs = 0;
+        if (nvs_open("dsh-dial", NVS_READONLY, &nvs) == ESP_OK) {
+            size_t length = sizeof(_host);
+            nvs_get_str(nvs, "host", _host, &length);
+            uint16_t port = 0;
+            if (nvs_get_u16(nvs, "port", &port) == ESP_OK && port > 0) _port = port;
+            length = sizeof(_token);
+            nvs_get_str(nvs, "token", _token, &length);
+            nvs_close(nvs);
+        }
+    }
+    if (!_host[0] || !_token[0]) {
+        _uri[0] = '\0';
+        return;
+    }
+    snprintf(_uri, sizeof(_uri), "ws://%s:%u/dev?token=%s", _host, _port, _token);
+    ESP_LOGI(TAG, "Bridge endpoint: ws://%s:%u", _host, _port);
+}
+
+void CompanionApp::sendDeviceConfig()
+{
+    if (!_ws || !_connected) return;
+    device_service_config_t config;
+    device_config_load(&config);
+    cJSON *root = cJSON_CreateObject();
+    cJSON *mail = cJSON_AddObjectToObject(root, "mail");
+    cJSON *qq = cJSON_AddObjectToObject(mail, "qq");
+    cJSON *gmail = cJSON_AddObjectToObject(mail, "gmail");
+    cJSON *sub2api = cJSON_AddObjectToObject(root, "sub2api");
+    cJSON_AddStringToObject(root, "t", "config");
+    cJSON_AddStringToObject(qq, "email", config.qq_email);
+    cJSON_AddStringToObject(qq, "appPassword", config.qq_app_password);
+    cJSON_AddStringToObject(gmail, "email", config.gmail_email);
+    cJSON_AddStringToObject(gmail, "appPassword", config.gmail_app_password);
+    cJSON_AddStringToObject(sub2api, "url", config.sub2api_url);
+    cJSON_AddStringToObject(sub2api, "token", config.sub2api_token);
+    char *text = cJSON_PrintUnformatted(root);
+    if (text) {
+        esp_websocket_client_send_text(_ws, text, strlen(text), pdMS_TO_TICKS(1000));
+        free(text);
+    }
+    cJSON_Delete(root);
+}
+
+/*
+ * Keep the legacy namespace as a migration path for devices flashed before
+ * the on-device configuration page was added.
+ */
+/*
     nvs_handle_t nvs = 0;
     if (nvs_open("dsh-dial", NVS_READONLY, &nvs) == ESP_OK) {
         size_t length = sizeof(_host);
@@ -159,7 +218,7 @@ void CompanionApp::loadBridgeConfig()
     }
     snprintf(_uri, sizeof(_uri), "ws://%s:%u/dev?token=%s", _host, _port, _token);
     ESP_LOGI(TAG, "Bridge endpoint: ws://%s:%u/dev", _host, _port);
-}
+*/
 
 void CompanionApp::setConnection(const char *text, uint32_t text_color)
 {
@@ -223,6 +282,7 @@ void CompanionApp::websocketEvent(void *handler_args, esp_event_base_t, int32_t 
         }
         constexpr char hello[] = "{\"t\":\"hello\",\"fw\":\"companion-brookesia/1.1\",\"board\":\"ESP32-S3-Touch-LCD-1.85B\"}";
         esp_websocket_client_send_text(self->_ws, hello, sizeof(hello) - 1, pdMS_TO_TICKS(1000));
+        self->sendDeviceConfig();
     } else if (event_id == WEBSOCKET_EVENT_DISCONNECTED || event_id == WEBSOCKET_EVENT_ERROR || event_id == WEBSOCKET_EVENT_CLOSED) {
         self->_connected = false;
         esp_brookesia::gui::LvLockGuard guard;

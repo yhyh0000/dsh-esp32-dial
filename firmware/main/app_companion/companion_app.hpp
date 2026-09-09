@@ -32,6 +32,7 @@ private:
     void loadAppearance();
     void saveAppearance();
     void loadBridgeConfig();
+    void sendDeviceConfig();
     void startTransport();
     void stopTransport();
     void handleMessage(const char *text, size_t length);

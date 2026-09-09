@@ -1,4 +1,5 @@
 #include "set_wifi_service.h"
+#include <stdbool.h>
 #include <stdio.h>  
 #include <string.h>
 #include <stdlib.h>
@@ -7,6 +8,7 @@
 #include "esp_log.h"
 #include "esp_wifi.h"
 #include "esp_netif.h"
+#include "device_provisioning.h"
 
 #include "set_lv_style.h"
 
@@ -21,6 +23,9 @@ static lv_obj_t *status_bar = NULL;
 static const char *TAG = "wifi_scan";
 static EventGroupHandle_t s_wifi_event_group;
 static void wifi_scan_ui_task(void *arg);
+static bool s_wifi_initialized = false;
+static bool s_has_saved_ssid = false;
+static uint8_t s_disconnect_retries = 0;
 
 /* 系统状态栏WiFi图标更新回调 */
 static wifi_status_bar_cb_t s_status_bar_cb = NULL;
@@ -308,6 +313,9 @@ static void event_handler(void *arg, esp_event_base_t event_base,
         if (s_status_bar_cb) {
             s_status_bar_cb(WIFI_STATE_DISCONNECTED);
         }
+        if (s_has_saved_ssid && !device_provisioning_ap_active()) {
+            esp_wifi_connect();
+        }
 
     } else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_CONNECTED) {
         wifi_event_sta_connected_t *evt = (wifi_event_sta_connected_t *)event_data;
@@ -350,10 +358,20 @@ static void event_handler(void *arg, esp_event_base_t event_base,
         if (s_status_bar_cb) {
             s_status_bar_cb(WIFI_STATE_DISCONNECTED);
         }
+        if (s_has_saved_ssid && !device_provisioning_ap_active()) {
+            if (s_disconnect_retries++ < 5) {
+                esp_wifi_connect();
+            } else {
+                ESP_LOGW(TAG, "Wi-Fi did not connect; starting setup hotspot");
+                device_provisioning_start_ap();
+                device_provisioning_start_http();
+            }
+        }
 
     } else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP) {
         ip_event_got_ip_t *evt = (ip_event_got_ip_t *)event_data;
         ESP_LOGI(TAG, "Got IP: " IPSTR, IP2STR(&evt->ip_info.ip));
+        s_disconnect_retries = 0;
         g_is_connected = true;
         bsp_display_lock(-1);
         hide_password_dialog();
@@ -376,14 +394,23 @@ static void event_handler(void *arg, esp_event_base_t event_base,
 
 void wifi_init_sta(void)
 {
+    if (s_wifi_initialized) return;
+    s_wifi_initialized = true;
     s_wifi_event_group = xEventGroupCreate();
 
-    ESP_ERROR_CHECK(esp_netif_init());
-    ESP_ERROR_CHECK(esp_event_loop_create_default());
-    esp_netif_create_default_wifi_sta();
+    esp_err_t err = esp_netif_init();
+    if (err != ESP_OK && err != ESP_ERR_INVALID_STATE) ESP_ERROR_CHECK(err);
+    err = esp_event_loop_create_default();
+    if (err != ESP_OK && err != ESP_ERR_INVALID_STATE) ESP_ERROR_CHECK(err);
+    if (!esp_netif_get_handle_from_ifkey("WIFI_STA_DEF")) esp_netif_create_default_wifi_sta();
+    if (!esp_netif_get_handle_from_ifkey("WIFI_AP_DEF")) esp_netif_create_default_wifi_ap();
 
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
     ESP_ERROR_CHECK(esp_wifi_init(&cfg));
+
+    wifi_config_t saved = {0};
+    esp_wifi_get_config(WIFI_IF_STA, &saved);
+    s_has_saved_ssid = saved.sta.ssid[0] != '\0';
 
     esp_event_handler_instance_t inst_any;
     esp_event_handler_instance_t inst_ip;
@@ -393,10 +420,15 @@ void wifi_init_sta(void)
         IP_EVENT, IP_EVENT_STA_GOT_IP, &event_handler, NULL, &inst_ip));
 
     ESP_ERROR_CHECK(esp_wifi_set_storage(WIFI_STORAGE_FLASH));
-    ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
+    ESP_ERROR_CHECK(esp_wifi_set_mode(s_has_saved_ssid ? WIFI_MODE_STA : WIFI_MODE_AP));
     ESP_ERROR_CHECK(esp_wifi_start());
 
-    ESP_LOGI(TAG, "wifi_init_sta finished.");
+    if (!s_has_saved_ssid) {
+        device_provisioning_start_ap();
+    }
+    device_provisioning_start_http();
+
+    ESP_LOGI(TAG, "wifi_init_sta finished (saved_ssid=%s).", s_has_saved_ssid ? "yes" : "no");
 
     xTaskCreate(wifi_scan_ui_task, "wifi_scan_ui_task", 4096, NULL, 5, NULL);
 }

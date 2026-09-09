@@ -7,6 +7,7 @@
 #include "esp_brookesia.hpp"
 #include "nvs.h"
 #include "assets/xiaolan_assets.hpp"
+#include "device_config.h"
 
 #include <cstdio>
 #include <cstring>
@@ -126,8 +127,15 @@ void XiaolanWidget::loadBridgeConfig()
     char host[96] = {};
     char token[128] = {};
     uint16_t port = 3082;
+    device_service_config_t saved;
+    device_config_load(&saved);
+    if (saved.bridge_host[0]) {
+        snprintf(host, sizeof(host), "%s", saved.bridge_host);
+        snprintf(token, sizeof(token), "%s", saved.bridge_token);
+        port = saved.bridge_port > 0 ? saved.bridge_port : 3082;
+    }
     nvs_handle_t nvs = 0;
-    if (nvs_open("dsh-dial", NVS_READONLY, &nvs) == ESP_OK) {
+    if ((!host[0] || !token[0]) && nvs_open("dsh-dial", NVS_READONLY, &nvs) == ESP_OK) {
         size_t length = sizeof(host);
         nvs_get_str(nvs, "host", host, &length);
         uint16_t stored_port = 0;
@@ -142,6 +150,31 @@ void XiaolanWidget::loadBridgeConfig()
         return;
     }
     snprintf(_uri, sizeof(_uri), "ws://%s:%u/dev?token=%s", host, port, token);
+}
+
+void XiaolanWidget::sendDeviceConfig()
+{
+    if (!_ws || !_connected) return;
+    device_service_config_t config;
+    device_config_load(&config);
+    cJSON *root = cJSON_CreateObject();
+    cJSON *mail = cJSON_AddObjectToObject(root, "mail");
+    cJSON *qq = cJSON_AddObjectToObject(mail, "qq");
+    cJSON *gmail = cJSON_AddObjectToObject(mail, "gmail");
+    cJSON *sub2api = cJSON_AddObjectToObject(root, "sub2api");
+    cJSON_AddStringToObject(root, "t", "config");
+    cJSON_AddStringToObject(qq, "email", config.qq_email);
+    cJSON_AddStringToObject(qq, "appPassword", config.qq_app_password);
+    cJSON_AddStringToObject(gmail, "email", config.gmail_email);
+    cJSON_AddStringToObject(gmail, "appPassword", config.gmail_app_password);
+    cJSON_AddStringToObject(sub2api, "url", config.sub2api_url);
+    cJSON_AddStringToObject(sub2api, "token", config.sub2api_token);
+    char *text = cJSON_PrintUnformatted(root);
+    if (text) {
+        esp_websocket_client_send_text(_ws, text, strlen(text), pdMS_TO_TICKS(1000));
+        free(text);
+    }
+    cJSON_Delete(root);
 }
 
 void XiaolanWidget::startTransport()
@@ -176,6 +209,7 @@ void XiaolanWidget::websocketEvent(void *handler_args, esp_event_base_t, int32_t
         self->_last_frame_ms = nowMs();
         constexpr char hello[] = "{\"t\":\"hello\",\"fw\":\"xiaolan-brookesia/1.1\",\"board\":\"ESP32-S3-Touch-LCD-1.85B\"}";
         esp_websocket_client_send_text(self->_ws, hello, sizeof(hello) - 1, pdMS_TO_TICKS(1000));
+        self->sendDeviceConfig();
     } else if (event_id == WEBSOCKET_EVENT_DISCONNECTED || event_id == WEBSOCKET_EVENT_ERROR || event_id == WEBSOCKET_EVENT_CLOSED) {
         self->_connected = false;
         esp_brookesia::gui::LvLockGuard guard;

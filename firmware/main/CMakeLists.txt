@@ -9,6 +9,7 @@ endif()
 idf_component_register(
     SRCS ${MAIN_SRCS}
     INCLUDE_DIRS "."
+    REQUIRES esp_http_server esp_wifi esp_netif nvs_flash esp_event esp_system
     EMBED_TXTFILES ${EMBEDDED_FILES}
 )
 

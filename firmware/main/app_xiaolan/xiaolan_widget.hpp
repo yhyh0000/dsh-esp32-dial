@@ -17,6 +17,7 @@ private:
     static void websocketEvent(void *handler_args, esp_event_base_t base, int32_t event_id, void *event_data);
 
     void loadBridgeConfig();
+    void sendDeviceConfig();
     void startTransport();
     void handleMessage(const char *text, size_t length);
     void selectAnimation(const char *phase);

@@ -96,15 +96,15 @@
 
 <div class="card">
   <h2>烧完之后</h2>
-  <p style="margin:0;font-size:14px">板子会重启并进入 Companion。当前版本的 Wi‑Fi 与 Bridge 参数需要后续通过配置工具写入，暂时不会自动显示二维码。</p>
+  <p style="margin:0;font-size:14px">板子会重启；首次启动或 Wi‑Fi 连续失败时会打开板载配网热点，可直接填写 Wi‑Fi、Bridge、邮箱和 Sub2API 参数。</p>
   <table>
     <tr><th>步骤</th><th>做什么</th></tr>
     <tr><td>1</td><td>先确认板子能显示桌面；若白屏，打开下方串口监视并按一次 RESET。</td></tr>
-    <tr><td>2</td><td>暂不要访问 <code>192.168.4.1</code>，当前固件尚未实现 AP 配网页面。</td></tr>
-    <tr><td>3</td><td>后续配置工具只写入 WiFi、Bridge 地址和设备 token，不写邮箱或 Sub2API 凭据。</td></tr>
-    <tr><td>4</td><td>保存重启 → 查看语音、邮箱和 Codex 额度页面</td></tr>
+    <tr><td>2</td><td>手机连接 <code>CODEX-DIAL-SETUP</code>，密码 <code>codexsetup</code>，打开 <code>http://192.168.4.1/</code>。</td></tr>
+    <tr><td>3</td><td>填写 Wi‑Fi、Bridge、QQ/Gmail 授权码和 Sub2API 参数；保存后设备自动重启。</td></tr>
+    <tr><td>4</td><td>串口打印板子 IP；回到家庭 Wi‑Fi 后访问该 IP，可再次修改配置。</td></tr>
   </table>
-  <p class="meta">token 来自电脑上 <code>node bridge.js</code> 首次启动的本机终端输出。邮箱授权码、OAuth 刷新令牌和 Sub2API Token 只保存在服务器环境变量中。</p>
+  <p class="meta">Bridge token 来自电脑上 <code>node bridge.js</code> 首次启动的本机终端输出。邮箱授权码和 Sub2API Token 通过已认证连接发送给 Bridge，仅在运行时使用，不会打印到日志。</p>
 </div>
 
 </div>

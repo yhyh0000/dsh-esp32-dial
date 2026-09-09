@@ -32,6 +32,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { CodexAppServer } from "./codex-backend.js";
 import { normalizeQuotaResponse } from "./companion-adapter.js";
+import { fetchMailAccount } from "./mail-adapter.js";
 
 // ─────────────────────────────────────────────────────────────── configuration
 
@@ -50,7 +51,7 @@ const CONFIG = {
 	freshnessMs: 3000,
 	/** `done` is shown for this long after a run finishes, then falls to idle. */
 	doneHoldMs: 4000,
-	/** Optional Sub2API endpoint; credentials stay on the bridge host. */
+	/** Optional Sub2API fallback; board configuration is preferred. */
 	sub2apiQuotaUrl: process.env.SUB2API_QUOTA_URL ?? "",
 	sub2apiAuthToken: process.env.SUB2API_AUTH_TOKEN ?? "",
 	companionPollMs: Number(process.env.COMPANION_POLL_MS ?? 60000),
@@ -577,6 +578,41 @@ function toFrame(state) {
 /** Connected devices; a Set because several dials may watch one DSH. */
 const devices = new Set();
 
+function objectOrEmpty(value) {
+	return value !== null && typeof value === "object" && !Array.isArray(value) ? value : {};
+}
+
+function textOrEmpty(value) {
+	return typeof value === "string" ? value.trim() : "";
+}
+
+/** Normalize credentials sent by the board without ever writing them to logs. */
+function normalizeDeviceConfig(value) {
+	const config = objectOrEmpty(value);
+	const mail = objectOrEmpty(config.mail);
+	const qq = objectOrEmpty(mail.qq);
+	const gmail = objectOrEmpty(mail.gmail);
+	const sub2api = objectOrEmpty(config.sub2api);
+	return {
+		mail: {
+			qq: { email: textOrEmpty(qq.email), appPassword: textOrEmpty(qq.appPassword) },
+			gmail: { email: textOrEmpty(gmail.email), appPassword: textOrEmpty(gmail.appPassword) },
+		},
+		sub2api: { url: textOrEmpty(sub2api.url), token: textOrEmpty(sub2api.token) },
+	};
+}
+
+function activeServiceConfig() {
+	let first = null;
+	for (const device of devices) {
+		if (!device.serviceConfig) continue;
+		first ??= device.serviceConfig;
+		const { mail, sub2api } = device.serviceConfig;
+		if (mail?.qq?.email || mail?.gmail?.email || sub2api?.url) return device.serviceConfig;
+	}
+	return first;
+}
+
 /** Pending asks by id, so an `answer` frame can be routed back to DSH. */
 const pendingAsks = new Map();
 
@@ -614,6 +650,7 @@ let companionState = {
 	},
 };
 let quotaRefreshPromise = null;
+let mailRefreshPromise = null;
 
 /**
  * Send one JSON frame to one device.
@@ -639,16 +676,20 @@ function publishCompanion(next) {
 	broadcast(companionState);
 }
 
-/** Poll Sub2API only when explicitly configured; never send its token to a dial. */
+/** Poll Sub2API from board config first, with environment variables as fallback. */
 async function refreshSub2ApiQuota() {
-	if (!CONFIG.sub2apiQuotaUrl || quotaRefreshPromise) return quotaRefreshPromise;
+	if (quotaRefreshPromise) return quotaRefreshPromise;
+	const serviceConfig = activeServiceConfig();
+	const quotaUrl = serviceConfig?.sub2api?.url || CONFIG.sub2apiQuotaUrl;
+	const authToken = serviceConfig?.sub2api?.token || CONFIG.sub2apiAuthToken;
+	if (!quotaUrl) return null;
 	quotaRefreshPromise = (async () => {
 		const controller = new AbortController();
 		const timeout = setTimeout(() => controller.abort(), 8000);
 		try {
 			const headers = { accept: "application/json" };
-			if (CONFIG.sub2apiAuthToken) headers.authorization = `Bearer ${CONFIG.sub2apiAuthToken}`;
-			const response = await fetch(CONFIG.sub2apiQuotaUrl, { headers, signal: controller.signal });
+			if (authToken) headers.authorization = `Bearer ${authToken}`;
+			const response = await fetch(quotaUrl, { headers, signal: controller.signal });
 			if (!response.ok) throw new Error(`Sub2API HTTP ${response.status}`);
 			const quota = normalizeQuotaResponse(await response.json());
 			publishCompanion({ quota });
@@ -663,6 +704,46 @@ async function refreshSub2ApiQuota() {
 		}
 	})().finally(() => { quotaRefreshPromise = null; });
 	return quotaRefreshPromise;
+}
+
+/** Read QQ/Gmail on the bridge and publish only safe message metadata. */
+async function refreshMail() {
+	if (mailRefreshPromise) return mailRefreshPromise;
+	const serviceConfig = activeServiceConfig();
+	const configured = serviceConfig?.mail ?? {};
+	const qq = configured.qq ?? {};
+	const gmail = configured.gmail ?? {};
+	if (!qq.email && !qq.appPassword && !gmail.email && !gmail.appPassword) return null;
+	mailRefreshPromise = (async () => {
+		const results = await Promise.all([
+			fetchMailAccount("qq", qq),
+			fetchMailAccount("gmail", gmail),
+		]);
+		const items = results.flatMap((result) => result.items).sort((a, b) => Date.parse(b.time) - Date.parse(a.time)).slice(0, 3);
+		const configuredResults = results.filter((result) => result.status !== "unconfigured");
+		const online = configuredResults.filter((result) => result.status === "online");
+		const status = configuredResults.length === 0 ? "offline" : online.length > 0 ? "online" : "offline";
+		const accounts = Object.fromEntries(results.map((result) => [result.provider, {
+			status: result.status,
+			unread: result.unread,
+		}]));
+		publishCompanion({
+			mail: {
+				status,
+				provider: online.map((result) => result.provider).join(","),
+				unread: results.reduce((total, result) => total + result.unread, 0),
+				updatedAt: Date.now(),
+				accounts,
+				items,
+			},
+		});
+		for (const result of results) {
+			if (result.status === "offline") log(`WARN ${result.provider} IMAP unavailable (${result.error})`);
+		}
+	}).catch((error) => {
+			log(`WARN mail refresh failed (${error.message})`);
+	}).finally(() => { mailRefreshPromise = null; });
+	return mailRefreshPromise;
 }
 
 /** Send one JSON frame to every attached device. */
@@ -767,7 +848,7 @@ async function onDeviceFrame(device, text) {
 	let frame;
 	try { frame = JSON.parse(text); } catch { return; }
 
-	switch (frame.t) {
+		switch (frame.t) {
 		case "hello": {
 			device.info = { fw: frame.fw, board: frame.board };
 			log(`device hello: ${frame.board ?? "?"} fw=${frame.fw ?? "?"} battery=${frame.battery ?? "?"}%`);
@@ -783,6 +864,13 @@ async function onDeviceFrame(device, text) {
 			}
 			break;
 		}
+
+		case "config":
+			device.serviceConfig = normalizeDeviceConfig(frame.config ?? frame);
+			log(`device service config updated: qq=${Boolean(device.serviceConfig.mail.qq.email && device.serviceConfig.mail.qq.appPassword)} gmail=${Boolean(device.serviceConfig.mail.gmail.email && device.serviceConfig.mail.gmail.appPassword)} sub2api=${Boolean(device.serviceConfig.sub2api.url)}`);
+			void refreshSub2ApiQuota();
+			void refreshMail();
+			break;
 
 		case "ping":
 			device.battery = frame.battery;
@@ -1344,11 +1432,9 @@ function startBridge() {
 		void tick();
 		watchDshEvents();
 	}
-	if (CONFIG.sub2apiQuotaUrl) {
-		setInterval(() => { void refreshSub2ApiQuota(); }, Math.max(15000, CONFIG.companionPollMs));
-		void refreshSub2ApiQuota();
-		log(`Sub2API quota polling enabled (${CONFIG.sub2apiQuotaUrl})`);
-	}
+	setInterval(() => { void refreshSub2ApiQuota(); }, Math.max(15000, CONFIG.companionPollMs));
+	setInterval(() => { void refreshMail(); }, Math.max(30000, CONFIG.companionPollMs));
+	if (CONFIG.sub2apiQuotaUrl) log("Sub2API quota polling enabled from environment");
 }
 
 // If run as a script (node bridge.js), start the server.

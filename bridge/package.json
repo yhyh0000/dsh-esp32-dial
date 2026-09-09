@@ -8,6 +8,9 @@
     "test": "node selftest.js",
     "test:quota": "node --test companion-adapter.test.js"
   },
+  "dependencies": {
+    "imapflow": "^1.0.181"
+  },
   "engines": {
     "node": ">=18"
   },
