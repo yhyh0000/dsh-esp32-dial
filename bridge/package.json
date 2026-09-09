@@ -1,0 +1,15 @@
+{
+  "name": "dsh-esp32-bridge",
+  "version": "0.5.0",
+  "description": "Bridge between Codex/DSH and an ESP32-S3 status dial (protocol documented in ../docs/协议规范.md)",
+  "type": "module",
+  "scripts": {
+    "start": "node bridge.js",
+    "test": "node selftest.js",
+    "test:quota": "node --test companion-adapter.test.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "license": "MIT"
+}

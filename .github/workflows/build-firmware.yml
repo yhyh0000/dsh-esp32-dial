@@ -1,0 +1,114 @@
+name: build-codex-firmware
+
+# The firmware is now the upstream Waveshare Desktop/ESP-Brookesia project.
+# DSH is compiled as a Phone App plugin inside that project. Keep the same
+# merged image contract so the existing WebSerial page remains reusable.
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container: espressif/idf:v5.5.3
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build ESP-IDF desktop
+        working-directory: firmware
+        run: |
+          . /opt/esp/idf/export.sh
+          idf.py set-target esp32s3
+          idf.py build
+
+      - name: Merge into a single flashable image
+        working-directory: firmware
+        run: |
+          . /opt/esp/idf/export.sh
+          # The upstream desktop partition table places the factory app at
+          # 0x20000 (not the Arduino default 0x10000).
+          esptool.py --chip esp32s3 merge_bin \
+            --output dsh-dial-merged.bin \
+            --flash_mode dio \
+            --flash_freq 80m \
+            --flash_size 16MB \
+            0x0 build/bootloader/bootloader.bin \
+            0x8000 build/partition_table/partition-table.bin \
+            0x20000 build/01_factory.bin
+          ls -la dsh-dial-merged.bin
+
+      - name: Report sizes
+        working-directory: firmware
+        run: |
+          . /opt/esp/idf/export.sh
+          echo "### Firmware size" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          idf.py size 2>&1 | tail -n 35 >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: codex-desktop-firmware
+          path: |
+            firmware/dsh-dial-merged.bin
+            firmware/build/01_factory.bin
+            firmware/build/bootloader/bootloader.bin
+            firmware/build/partition_table/partition-table.bin
+          if-no-files-found: error
+
+      - name: Stage firmware for Pages
+        if: startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/main'
+        run: |
+          mkdir -p pages
+          cp -r docs/* pages/
+          cp companion-ui-v1.html pages/companion-ui-v1.html
+          mkdir -p pages/firmware/components/brookesia_core/docs/_static/assets/phone/images/large
+          cp firmware/components/brookesia_core/docs/_static/assets/phone/images/large/esp_brookesia_image_large_wallpaper_dark_720_720.png \
+            pages/firmware/components/brookesia_core/docs/_static/assets/phone/images/large/
+          cp firmware/dsh-dial-merged.bin pages/dsh-dial-merged.bin
+          cat > pages/build-info.json <<JSON
+          {
+            "commit": "${{ github.sha }}",
+            "ref": "${{ github.ref_name }}",
+            "builtAt": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+            "runNumber": "${{ github.run_number }}",
+            "base": "waveshare-desktop-esp-brookesia",
+            "product": "Codex Agent Desktop",
+            "board": "Waveshare ESP32-S3-Touch-LCD-1.85B"
+          }
+          JSON
+
+      - name: Upload Pages artifact
+        if: startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/main'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: pages
+
+      - name: Release on tag
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: firmware/dsh-dial-merged.bin
+          generate_release_notes: true
+
+  deploy-pages:
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

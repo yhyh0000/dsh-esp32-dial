@@ -1,0 +1,21 @@
+# Build artifacts
+firmware/.pio/
+firmware-backups/
+bridge/node_modules/
+tools/node_modules/
+tools/.npm-cache/
+tools/package-lock.json
+frpc-dial.toml
+# OS noise
+.DS_Store
+Thumbs.db
+# Temp probes
+probe-*.js
+verify-*.js
+firmware-legacy/
+artifacts/
+references/
+
+# Local bridge credentials
+bridge-state/device-token.txt
+bridge/state/device-token.txt
