@@ -137,6 +137,10 @@ void XiaolanWidget::loadBridgeConfig()
 
 void XiaolanWidget::startTransport()
 {
+    if (_uri[0] == '\0') {
+        ESP_LOGW(TAG, "Bridge transport disabled until host and token are configured");
+        return;
+    }
     esp_websocket_client_config_t config = {};
     config.uri = _uri;
     config.buffer_size = 4096;

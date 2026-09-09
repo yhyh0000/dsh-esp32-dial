@@ -1103,7 +1103,13 @@ lv_display_t *bsp_display_start_with_config(bsp_display_cfg_t *cfg)
 
     BSP_NULL_CHECK(disp = bsp_display_lcd_init(cfg), NULL);
 
-    BSP_NULL_CHECK(disp_indev = bsp_display_indev_init(cfg, disp), NULL);
+    /* A missing CST816S should not prevent the LCD from rendering.  This also
+     * keeps the board diagnosable when the touch connector or controller is
+     * unavailable; the application can still start and report the condition. */
+    disp_indev = bsp_display_indev_init(cfg, disp);
+    if (!disp_indev) {
+        ESP_LOGW(TAG, "Touch initialization failed; continuing without touch input");
+    }
 
     BSP_ERROR_CHECK_RETURN_NULL(bsp_display_brightness_init());
 

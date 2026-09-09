@@ -96,10 +96,10 @@
 
 <div class="card">
   <h2>烧完之后</h2>
-  <p style="margin:0;font-size:14px">板子会重启并进入<b>配网模式</b>：屏幕显示一个二维码和 AP 密码。</p>
+  <p style="margin:0;font-size:14px">板子会重启并启动桌面。当前版本的 Wi‑Fi 与 Bridge 参数需要后续通过配置工具写入，暂时不会自动显示二维码。</p>
   <table>
     <tr><th>步骤</th><th>做什么</th></tr>
-    <tr><td>1</td><td>手机相机扫屏幕上的二维码 → 加入 <code>DSH-Dial-XXXX</code></td></tr>
+    <tr><td>1</td><td>先确认板子能显示桌面；若白屏，打开下方串口监视并按一次 RESET。</td></tr>
     <tr><td>2</td><td>浏览器打开 <code>http://192.168.4.1</code></td></tr>
     <tr><td>3</td><td>填家里 WiFi + 电脑局域网 IP + 桥接 token</td></tr>
     <tr><td>4</td><td>保存重启 → 开始显示 Codex Agent 状态</td></tr>
@@ -264,8 +264,8 @@ el('btnFlash').addEventListener('click', () => withLoader(async loader => {
   log('烧录完成，正在硬复位…', 's');
   await loader.after('hard_reset');
   el('prog').style.width = '100%';
-  el('stat').textContent = '完成 — 看屏幕上的二维码';
-  log('板子已重启。屏幕应显示配网二维码。', 's');
+  el('stat').textContent = '完成 — 请查看屏幕或串口日志';
+  log('板子已重启。当前固件会启动桌面；如仍白屏，请查看串口日志。', 's');
 }));
 
 el('btnErase').addEventListener('click', () => withLoader(async loader => {

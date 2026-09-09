@@ -3,7 +3,6 @@
  *
  * SPDX-License-Identifier: CC0-1.0
  */
-#include "esp_ota_ops.h"
 #include "esp_wifi.h"
 #include "nvs_flash.h"
 #include "bsp/esp-bsp.h"
@@ -77,10 +76,6 @@ static void boot_button_init(void)
 
 extern "C" void app_main(void)
 {
-    const esp_partition_t *update_partition = esp_partition_find_first(ESP_PARTITION_TYPE_APP, ESP_PARTITION_SUBTYPE_APP_FACTORY, NULL);
-    ESP_LOGI(TAG, "Switch to partition factory");
-    esp_ota_set_boot_partition(update_partition);
-    
     esp_err_t ret = nvs_flash_init();
     if (ret == ESP_ERR_NVS_NO_FREE_PAGES ||
         ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
@@ -90,12 +85,20 @@ extern "C" void app_main(void)
 
     ESP_UTILS_LOGI("Display ESP-Brookesia phone demo");
     lv_display_t *disp = bsp_display_start();
+    if (!disp) {
+        ESP_LOGE(TAG, "Display startup failed");
+        return;
+    }
     lv_indev_t *tp = bsp_display_get_input_dev();
+    if (!tp) {
+        ESP_LOGW(TAG, "Touch input unavailable; creating a display-only fallback");
+        tp = lv_indev_create();
+        ESP_UTILS_CHECK_NULL_EXIT(tp, "Create fallback input device failed");
+        lv_indev_set_type(tp, LV_INDEV_TYPE_POINTER);
+    }
     ESP_UTILS_CHECK_ERROR_EXIT(bsp_display_backlight_on(), "Turn on display backlight failed");
     /* Initialize BOOT button as power key (toggle backlight) */
     boot_button_init();
-    /* Keep Wi-Fi as a system service even though the Settings app is removed. */
-    wifi_init_sta();
     /* Configure GUI lock */
     LvLock::registerCallbacks([](int timeout_ms) {
         esp_err_t ret = bsp_display_lock(timeout_ms);
@@ -109,7 +112,7 @@ extern "C" void app_main(void)
     /* Create a phone object */
     ESP_LOGI(TAG, "Create phone object");
     Phone *phone = new Phone(disp);
-    phone->setTouchDevice(tp);
+    ESP_UTILS_CHECK_FALSE_EXIT(phone->setTouchDevice(tp), "Set touch device failed");
     
     Stylesheet *stylesheet = new Stylesheet(STYLESHEET_360_360_DARK);
     ESP_UTILS_CHECK_NULL_EXIT(stylesheet, "Create stylesheet failed");
@@ -164,5 +167,8 @@ extern "C" void app_main(void)
             
         }, 1000, phone);
     }
+
+    /* Start Wi-Fi only after LVGL and the status-bar callback are ready. */
+    wifi_init_sta();
 
 }
