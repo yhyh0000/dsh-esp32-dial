@@ -336,6 +336,8 @@ h1 {
 .idle-photo { position: absolute; inset: 0; z-index: 20; background: #0b1017; display: flex; align-items: center; justify-content: center; opacity: 1; transition: opacity .35s; }
 .idle-photo.hidden { opacity: 0; pointer-events: none; }
 .idle-photo img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 50%; transform: scale(1); transform-origin: center; transition: transform .2s ease, object-position .2s ease; }
+.idle-photo.xiaolan-default { background: #101612; }
+.idle-photo.xiaolan-default img { position: absolute; left: 50%; top: 94px; width: 180px; height: 195px; object-fit: contain; transform: translateX(-50%); }
 .idle-photo::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,.08), rgba(0,0,0,.08) 58%, rgba(0,0,0,.63)); pointer-events: none; }
 .idle-time { position: absolute; z-index: 1; top: 58px; left: 0; right: 0; text-align: center; color: rgba(255,255,255,.92); text-shadow: 0 2px 14px rgba(0,0,0,.45); }
 .idle-time strong { display: block; font-size: 34px; font-weight: 500; line-height: 1; letter-spacing: 1px; font-variant-numeric: tabular-nums; }
@@ -551,11 +553,11 @@ h1 {
           <div class="detail-summary" id="detailSummary">摘要：请在今天下班前确认下一步安排。</div>
         </div>
 
-        <div class="idle-photo" id="idlePhoto">
-          <img id="photoPreview" src="firmware/components/brookesia_core/docs/_static/assets/phone/images/large/esp_brookesia_image_large_wallpaper_dark_720_720.png" alt="预设照片">
+        <div class="idle-photo xiaolan-default" id="idlePhoto">
+          <img id="photoPreview" src="firmware/main/app_xiaolan/assets/xiaolan_idle_default.png" alt="小蓝淡黄碎花裙">
           <div class="idle-time" id="idle-time"><strong id="idleClock">21:31</strong><span id="idleDate">9月8日 · 星期二</span></div>
           <div class="photo-info">
-            <div><div class="photo-name" id="photoName">预设照片</div><div class="photo-date" id="photoDate">AI Companion</div></div>
+            <div><div class="photo-name" id="photoName">小蓝 · 淡黄碎花裙</div><div class="photo-date" id="photoDate">AI Companion</div></div>
             <div class="photo-status">点击唤醒</div>
           </div>
         </div>
@@ -683,6 +685,7 @@ let resetCards = 3;
 let quotaResetSeconds = 5624;
 let weekResetSeconds = 574424;
 let activeProvider = 'QQ';
+let customPhoto = false;
 let touchStartX = 0;
 let touchStartY = 0;
 let flasherLoaded = false;
@@ -896,6 +899,10 @@ $('resetButton').addEventListener('click', () => {
   $('idleTimeY').value = '58';
   $('idleTimeColor').value = '#FFFFFF';
   $('idleTimeWeight').value = '500';
+  customPhoto = false;
+  $('idlePhoto').classList.add('xiaolan-default');
+  $('photoPreview').src = 'firmware/main/app_xiaolan/assets/xiaolan_idle_default.png';
+  $('photoName').textContent = '小蓝 · 淡黄碎花裙';
   applyIdleTimeStyle();
   enterIdle();
 });
@@ -909,6 +916,8 @@ $('idleTimeWeight').addEventListener('change', applyIdleTimeStyle);
 $('photoFile').addEventListener('change', event => {
   const file = event.target.files[0];
   if (!file) return;
+  customPhoto = true;
+  $('idlePhoto').classList.remove('xiaolan-default');
   const reader = new FileReader();
   reader.onload = () => {
     $('photoPreview').src = reader.result;
@@ -925,8 +934,23 @@ function applyPhotoCrop() {
   const scale = zoom / 100;
   const shiftX = (50 - positionX) * (scale - 1);
   const shiftY = (50 - positionY) * (scale - 1);
-  $('photoPreview').style.transform = 'translate(' + shiftX.toFixed(2) + '%, ' + shiftY.toFixed(2) + '%) scale(' + scale + ')';
-  $('photoPreview').style.objectPosition = positionX + '% ' + positionY + '%';
+  if (customPhoto) {
+    $('photoPreview').style.width = '100%';
+    $('photoPreview').style.height = '100%';
+    $('photoPreview').style.left = '';
+    $('photoPreview').style.top = '';
+    $('photoPreview').style.objectFit = 'cover';
+    $('photoPreview').style.transform = 'translate(' + shiftX.toFixed(2) + '%, ' + shiftY.toFixed(2) + '%) scale(' + scale + ')';
+    $('photoPreview').style.objectPosition = positionX + '% ' + positionY + '%';
+  } else {
+    $('photoPreview').style.width = '180px';
+    $('photoPreview').style.height = '195px';
+    $('photoPreview').style.left = '50%';
+    $('photoPreview').style.top = '94px';
+    $('photoPreview').style.objectFit = 'contain';
+    $('photoPreview').style.transform = 'translateX(-50%)';
+    $('photoPreview').style.objectPosition = '50% 50%';
+  }
   $('photoZoomValue').textContent = zoom + '%';
   $('photoPositionXValue').textContent = positionX + '%';
   $('photoPositionYValue').textContent = positionY + '%';

@@ -26,6 +26,8 @@ private:
     int _frame = 0;
     const lv_image_dsc_t *_frames = nullptr;
     int _frame_count = 0;
+    int _pose = 0;
+    int _outfit = 0;
     int _image_width = 160;
     int _image_height = 173;
     bool _dragging = false;
@@ -35,6 +37,8 @@ private:
     char _uri[256] = {};
     bool _connected = false;
     uint32_t _last_frame_ms = 0;
+    uint32_t _outfit_changed_ms = 0;
+    char _phase[16] = "idle";
 };
 
 } // namespace esp_brookesia::apps

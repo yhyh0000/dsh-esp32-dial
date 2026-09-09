@@ -6,6 +6,7 @@
 #include "esp_timer.h"
 #include "nvs.h"
 #include "esp_brookesia.hpp"
+#include "app_xiaolan/assets/xiaolan_assets.hpp"
 
 #include <cstdio>
 #include <ctime>
@@ -14,6 +15,7 @@
 namespace {
 constexpr char TAG[] = "CompanionApp";
 constexpr uint32_t kIdleTimeoutMs = 18000;
+constexpr uint32_t kIdleOutfitCycleMs = 15000;
 constexpr lv_coord_t kPageInset = 40;
 constexpr lv_coord_t kPageWidth = 280;
 
@@ -504,7 +506,9 @@ void CompanionApp::applyAppearance()
         lv_obj_set_style_text_color(_idle_clock_layers[i], color(_appearance.clock_color), 0);
         lv_obj_set_style_text_font(_idle_clock_layers[i], clockFont(_appearance.clock_weight), 0);
     }
-    lv_obj_align(_idle_date, LV_ALIGN_TOP_MID, 0, _appearance.clock_y + 42);
+    // The pet occupies the middle of the circular idle screen; keep the
+    // caption below it instead of letting the clock settings overlap the art.
+    lv_obj_align(_idle_date, LV_ALIGN_TOP_MID, 0, 310);
     lv_obj_set_style_text_color(_idle_date, color(_appearance.clock_color), 0);
     saveAppearance();
 }
@@ -562,11 +566,18 @@ void CompanionApp::onIdleTimer(lv_timer_t *timer)
     localtime_r(&now, &timeinfo);
     char clock[8];
     snprintf(clock, sizeof(clock), "%02d:%02d", timeinfo.tm_hour, timeinfo.tm_min);
+    const uint32_t tick_ms = nowMs();
     for (auto *layer : self->_idle_clock_layers) {
         if (layer) lv_label_set_text(layer, clock);
     }
+    if (self->_idle_pet) {
+        const uint32_t pet_age_ms = tick_ms - self->_idle_pet_started_ms;
+        self->_idle_pet_pose = static_cast<uint8_t>((pet_age_ms / 5000U) % XIAOLAN_POSES);
+        self->_idle_pet_outfit = static_cast<uint8_t>(
+            (XIAOLAN_DEFAULT_OUTFIT + (pet_age_ms / kIdleOutfitCycleMs)) % XIAOLAN_OUTFITS);
+        lv_image_set_src(self->_idle_pet, &xiaolan_outfits[self->_idle_pet_outfit][self->_idle_pet_pose]);
+    }
 
-    const uint32_t tick_ms = nowMs();
     if (self->_connected && self->_ws && tick_ms - self->_last_ping_ms >= 10000) {
         constexpr char ping[] = "{\"t\":\"ping\",\"battery\":0,\"charging\":false}";
         esp_websocket_client_send_text(self->_ws, ping, sizeof(ping) - 1, pdMS_TO_TICKS(1000));
@@ -602,6 +613,15 @@ bool CompanionApp::run(void)
     lv_obj_set_style_bg_opa(_idle_overlay, LV_OPA_COVER, 0);
     lv_obj_set_style_border_width(_idle_overlay, 0, 0);
     lv_obj_add_event_cb(_idle_overlay, onIdleClicked, LV_EVENT_CLICKED, this);
+
+    _idle_pet = lv_image_create(_idle_overlay);
+    lv_obj_set_size(_idle_pet, 168, 182);
+    lv_obj_align(_idle_pet, LV_ALIGN_TOP_MID, 0, 104);
+    lv_image_set_antialias(_idle_pet, false);
+    lv_image_set_scale(_idle_pet, 448);
+    lv_image_set_src(_idle_pet, &xiaolan_outfits[XIAOLAN_DEFAULT_OUTFIT][0]);
+    _idle_pet_started_ms = nowMs();
+    lv_obj_add_event_cb(_idle_pet, onIdleClicked, LV_EVENT_CLICKED, this);
 
     for (uint8_t i = 0; i < 3; ++i) {
         _idle_clock_layers[i] = makeLabel(_idle_overlay, "00:00", color(0xFFFFFF), 230);

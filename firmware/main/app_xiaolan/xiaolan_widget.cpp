@@ -15,6 +15,7 @@ namespace {
 constexpr char TAG[] = "Xiaolan";
 constexpr uint32_t kFrameMs = 125;
 constexpr uint32_t kPingMs = 10000;
+constexpr uint32_t kOutfitMs = 12000;
 
 static uint32_t nowMs()
 {
@@ -35,8 +36,8 @@ bool XiaolanWidget::begin(lv_obj_t *parent)
     if (!parent || _image) return false;
     _image = lv_image_create(parent);
     if (!_image) return false;
-    _image_width = 144;
-    _image_height = 156;
+    _image_width = 168;
+    _image_height = 182;
     lv_obj_set_size(_image, _image_width, _image_height);
     const lv_coord_t parent_width = lv_obj_get_content_width(parent);
     const lv_coord_t parent_height = lv_obj_get_content_height(parent);
@@ -44,8 +45,10 @@ bool XiaolanWidget::begin(lv_obj_t *parent)
                    parent_width > _image_width ? (parent_width - _image_width) / 2 : 0,
                    parent_height > _image_height ? (parent_height - _image_height) / 2 : 0);
     lv_image_set_antialias(_image, false);
-    lv_image_set_scale(_image, 384); // 1.5x nearest-neighbour enlargement
+    lv_image_set_scale(_image, 448); // 1.75x nearest-neighbour enlargement
+    _outfit = XIAOLAN_DEFAULT_OUTFIT;
     selectAnimation("idle");
+    _outfit_changed_ms = nowMs();
     lv_obj_add_event_cb(_image, onTouch, LV_EVENT_PRESSING, this);
     lv_obj_add_event_cb(_image, onTouch, LV_EVENT_RELEASED, this);
     lv_obj_add_event_cb(_image, onTouch, LV_EVENT_CLICKED, this);
@@ -58,30 +61,28 @@ bool XiaolanWidget::begin(lv_obj_t *parent)
 
 void XiaolanWidget::selectAnimation(const char *phase)
 {
-    const lv_image_dsc_t *frames = xiaolan_idle;
-    int count = XIAOLAN_IDLE_FRAMES;
-    if (phase && (strcmp(phase, "working") == 0 || strcmp(phase, "streaming") == 0)) {
-        frames = xiaolan_working;
-        count = XIAOLAN_WORKING_FRAMES;
+    int pose = 0; // calm idle
+    if (phase && (strcmp(phase, "working") == 0 || strcmp(phase, "streaming") == 0 ||
+                  strcmp(phase, "done") == 0 || strcmp(phase, "success") == 0)) {
+        pose = 4; // cheerful
     } else if (phase && (strcmp(phase, "thinking") == 0 || strcmp(phase, "active") == 0)) {
-        frames = xiaolan_active;
-        count = XIAOLAN_ACTIVE_FRAMES;
-    } else if (phase && strcmp(phase, "waiting") == 0) {
-        frames = xiaolan_rest;
-        count = XIAOLAN_REST_FRAMES;
-    } else if (phase && (strcmp(phase, "done") == 0 || strcmp(phase, "success") == 0)) {
-        frames = xiaolan_success;
-        count = XIAOLAN_SUCCESS_FRAMES;
-    } else if (phase && (strcmp(phase, "error") == 0 || strcmp(phase, "failed") == 0)) {
-        frames = xiaolan_failed;
-        count = XIAOLAN_FAILED_FRAMES;
+        pose = 3; // thinking
+    } else if (phase && (strcmp(phase, "waiting") == 0 || strcmp(phase, "error") == 0 ||
+                         strcmp(phase, "failed") == 0)) {
+        pose = 2; // resting
     }
-    if (frames != _frames) {
+    if (phase) {
+        strncpy(_phase, phase, sizeof(_phase) - 1);
+        _phase[sizeof(_phase) - 1] = '\0';
+    }
+    const lv_image_dsc_t *frames = xiaolan_outfits[_outfit];
+    if (frames != _frames || pose != _pose) {
         _frames = frames;
-        _frame_count = count;
+        _pose = pose;
+        _frame_count = XIAOLAN_POSES;
         _frame = 0;
     }
-    if (_image && _frames) lv_image_set_src(_image, &_frames[_frame % _frame_count]);
+    if (_image && _frames) lv_image_set_src(_image, &_frames[_pose % _frame_count]);
 }
 
 void XiaolanWidget::setState(const char *phase)
@@ -103,12 +104,20 @@ void XiaolanWidget::onTick(lv_timer_t *timer)
 {
     auto *self = static_cast<XiaolanWidget *>(timer ? timer->user_data : nullptr);
     if (!self || !self->_image || !self->_frames || self->_frame_count <= 0) return;
-    self->_frame = (self->_frame + 1) % self->_frame_count;
-    lv_image_set_src(self->_image, &self->_frames[self->_frame]);
-    if (self->_connected && self->_ws && nowMs() - self->_last_frame_ms >= kPingMs) {
+    const uint32_t tick_ms = nowMs();
+    if (tick_ms - self->_outfit_changed_ms >= kOutfitMs) {
+        self->_outfit = (self->_outfit + 1) % XIAOLAN_OUTFITS;
+        self->_outfit_changed_ms = tick_ms;
+        self->selectAnimation(self->_phase);
+    } else {
+        // Each column is a deliberate pose, so keep the current pose stable
+        // until Codex changes phase or the next outfit is selected.
+        lv_image_set_src(self->_image, &self->_frames[self->_pose]);
+    }
+    if (self->_connected && self->_ws && tick_ms - self->_last_frame_ms >= kPingMs) {
         constexpr char ping[] = "{\"t\":\"ping\",\"battery\":0,\"charging\":false}";
         esp_websocket_client_send_text(self->_ws, ping, sizeof(ping) - 1, pdMS_TO_TICKS(1000));
-        self->_last_frame_ms = nowMs();
+        self->_last_frame_ms = tick_ms;
     }
 }
 

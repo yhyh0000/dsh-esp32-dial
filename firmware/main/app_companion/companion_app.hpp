@@ -50,6 +50,7 @@ private:
     lv_obj_t *_screen = nullptr;
     lv_obj_t *_tileview = nullptr;
     lv_obj_t *_idle_overlay = nullptr;
+    lv_obj_t *_idle_pet = nullptr;
     lv_obj_t *_idle_clock_layers[3] = {};
     lv_obj_t *_idle_date = nullptr;
     lv_obj_t *_record_button = nullptr;
@@ -82,6 +83,9 @@ private:
     bool _recording = false;
     uint32_t _last_activity_ms = 0;
     uint32_t _record_started_ms = 0;
+    uint8_t _idle_pet_pose = 0;
+    uint8_t _idle_pet_outfit = 0;
+    uint32_t _idle_pet_started_ms = 0;
 };
 
 } // namespace esp_brookesia::apps
