@@ -111,7 +111,7 @@ int Phone::installApp(App *app)
 bool Phone::launchApp(App *app)
 {
     ESP_UTILS_CHECK_NULL_RETURN(app, false, "Invalid app");
-    return _manager.startApp(app->getId());
+    return _manager.launchApp(app);
 }
 
 bool Phone::uninstallApp(App &app)

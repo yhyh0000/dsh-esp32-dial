@@ -85,6 +85,12 @@ int Manager::installApp(App &app)
     return installApp(&app);
 }
 
+bool Manager::launchApp(App *app)
+{
+    ESP_UTILS_CHECK_NULL_RETURN(app, false, "Invalid app");
+    return startApp(app->getId());
+}
+
 int Manager::uninstallApp(App *app)
 {
     bool ret = true;
