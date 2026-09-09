@@ -96,15 +96,15 @@
 
 <div class="card">
   <h2>烧完之后</h2>
-  <p style="margin:0;font-size:14px">板子会重启并启动桌面。当前版本的 Wi‑Fi 与 Bridge 参数需要后续通过配置工具写入，暂时不会自动显示二维码。</p>
+  <p style="margin:0;font-size:14px">板子会重启并进入 Companion。当前版本的 Wi‑Fi 与 Bridge 参数需要后续通过配置工具写入，暂时不会自动显示二维码。</p>
   <table>
     <tr><th>步骤</th><th>做什么</th></tr>
     <tr><td>1</td><td>先确认板子能显示桌面；若白屏，打开下方串口监视并按一次 RESET。</td></tr>
-    <tr><td>2</td><td>浏览器打开 <code>http://192.168.4.1</code></td></tr>
-    <tr><td>3</td><td>填家里 WiFi + 电脑局域网 IP + 桥接 token</td></tr>
-    <tr><td>4</td><td>保存重启 → 开始显示 Codex Agent 状态</td></tr>
+    <tr><td>2</td><td>暂不要访问 <code>192.168.4.1</code>，当前固件尚未实现 AP 配网页面。</td></tr>
+    <tr><td>3</td><td>后续配置工具只写入 WiFi、Bridge 地址和设备 token，不写邮箱或 Sub2API 凭据。</td></tr>
+    <tr><td>4</td><td>保存重启 → 查看语音、邮箱和 Codex 额度页面</td></tr>
   </table>
-  <p class="meta">token 来自电脑上 <code>node bridge.js</code> 首次启动的输出。以后换网络：长按圆屏重新配网，或插 USB 用串口 <code>help</code>。</p>
+  <p class="meta">token 来自电脑上 <code>node bridge.js</code> 首次启动的本机终端输出。邮箱授权码、OAuth 刷新令牌和 Sub2API Token 只保存在服务器环境变量中。</p>
 </div>
 
 </div>
