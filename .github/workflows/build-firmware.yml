@@ -1,8 +1,8 @@
 name: build-codex-firmware
 
-# The firmware is now the upstream Waveshare Desktop/ESP-Brookesia project.
-# DSH is compiled as a Phone App plugin inside that project. Keep the same
-# merged image contract so the existing WebSerial page remains reusable.
+# The firmware uses Waveshare Desktop/ESP-Brookesia as its hardware/UI base,
+# with DSH Companion as the default launch app. Keep the merged image contract
+# so the existing WebSerial page remains reusable.
 on:
   push:
     branches: [main]
@@ -83,7 +83,8 @@ jobs:
             "builtAt": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
             "runNumber": "${{ github.run_number }}",
             "base": "waveshare-desktop-esp-brookesia",
-            "product": "Codex Agent Desktop",
+            "product": "DSH Codex Companion",
+            "entry": "CompanionApp",
             "board": "Waveshare ESP32-S3-Touch-LCD-1.85B"
           }
           JSON

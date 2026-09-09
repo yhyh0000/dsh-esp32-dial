@@ -149,6 +149,10 @@ extern "C" void app_main(void)
             launcher && g_xiaolan.begin(launcher->getPageMainObject(0)),
             "Install Xiaolan desktop pet failed");
 
+        /* Companion is the product entry point.  Keep the stock launcher
+         * available underneath it, but do not make users open an icon first. */
+        ESP_UTILS_CHECK_FALSE_EXIT(phone->launchApp(companionApp), "Launch CompanionApp failed");
+
         /* Create a timer to update the clock */
         lv_timer_create([](lv_timer_t *t) {
             time_t now;

@@ -35,6 +35,7 @@ public:
 
     int installApp(App &app);
     int installApp(App *app);
+    bool launchApp(App *app);
     bool uninstallApp(App &app);
     bool uninstallApp(App *app);
     bool uninstallApp(int id);

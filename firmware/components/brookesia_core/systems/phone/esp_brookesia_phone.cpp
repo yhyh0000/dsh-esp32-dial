@@ -108,6 +108,12 @@ int Phone::installApp(App *app)
     return base::Context::getManager().installApp(app);
 }
 
+bool Phone::launchApp(App *app)
+{
+    ESP_UTILS_CHECK_NULL_RETURN(app, false, "Invalid app");
+    return _manager.startApp(app->getId());
+}
+
 bool Phone::uninstallApp(App &app)
 {
     return base::Context::getManager().uninstallApp(app);

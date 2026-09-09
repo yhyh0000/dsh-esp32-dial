@@ -4,7 +4,7 @@
 
 - ESP-Brookesia Phone 负责桌面、状态栏、应用启动器、返回/最近任务和页面生命周期；
 - 设置、音乐、相册是基座自带应用；
-- Codex 控制台和 DSH 都以独立 Phone App / plugin 形式接入，桌面只负责启动和返回；
+- Codex 控制台和 DSH 都以独立 Phone App / plugin 形式接入，Companion 现在是开机默认入口，原生桌面保留为返回后的后台入口；
 - 小蓝使用已验收的 v2 动画帧，作为桌面层常驻宠物默认显示，可直接拖动位置；
 - 原来的 Arduino `DialUi + AppShell` 已移出构建，不再作为系统壳层。
 
