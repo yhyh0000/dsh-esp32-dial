@@ -75,6 +75,10 @@ jobs:
           mkdir -p pages/firmware/components/brookesia_core/docs/_static/assets/phone/images/large
           cp firmware/components/brookesia_core/docs/_static/assets/phone/images/large/esp_brookesia_image_large_wallpaper_dark_720_720.png \
             pages/firmware/components/brookesia_core/docs/_static/assets/phone/images/large/
+          mkdir -p pages/firmware/main/app_xiaolan/assets
+          cp firmware/main/app_xiaolan/assets/xiaolan_idle_default.png \
+            firmware/main/app_xiaolan/assets/xiaolan_prototype_sheet.png \
+            pages/firmware/main/app_xiaolan/assets/
           cp firmware/dsh-dial-merged.bin pages/dsh-dial-merged.bin
           cat > pages/build-info.json <<JSON
           {
