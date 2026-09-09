@@ -10,6 +10,7 @@ idf_component_register(
     SRCS ${MAIN_SRCS}
     INCLUDE_DIRS "."
     REQUIRES esp_http_server esp_wifi esp_netif nvs_flash esp_event esp_system
+             bsp_extra waveshare__esp32_s3_touch_lcd_1_85B
     EMBED_TXTFILES ${EMBEDDED_FILES}
 )
 
