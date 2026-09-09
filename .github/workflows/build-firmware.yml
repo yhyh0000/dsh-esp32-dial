@@ -69,7 +69,9 @@ jobs:
         run: |
           mkdir -p pages
           cp -r docs/* pages/
+          cp companion-ui-v1.html pages/index.html
           cp companion-ui-v1.html pages/companion-ui-v1.html
+          cp docs/index.html pages/flasher.html
           mkdir -p pages/firmware/components/brookesia_core/docs/_static/assets/phone/images/large
           cp firmware/components/brookesia_core/docs/_static/assets/phone/images/large/esp_brookesia_image_large_wallpaper_dark_720_720.png \
             pages/firmware/components/brookesia_core/docs/_static/assets/phone/images/large/

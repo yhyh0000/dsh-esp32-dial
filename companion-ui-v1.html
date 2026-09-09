@@ -382,7 +382,7 @@ h1 {
 .controls .hint { border-top: 1px solid var(--line); margin-top: 15px; padding-top: 12px; color: var(--muted); font-size: 10px; line-height: 1.6; }
 .status-readout { margin-top: 11px; display: flex; justify-content: space-between; color: var(--muted); font-size: 10px; }
 
-/* Online flasher tab: reuse the tested WebSerial page in docs/index.html. */
+/* Online flasher tab: reuse the tested WebSerial page as a sibling page. */
 .workspace.flasher-open {
   grid-template-columns: 1fr;
   grid-template-areas:
@@ -652,7 +652,7 @@ h1 {
       </div>
       <a id="flasherOpenLink" href="docs/index.html" target="_blank" rel="noopener">新窗口打开</a>
     </div>
-    <iframe class="flasher-frame" id="flasherFrame" title="在线烧录工具" loading="lazy"></iframe>
+    <iframe class="flasher-frame" id="flasherFrame" title="在线烧录工具" allow="serial" loading="lazy"></iframe>
   </section>
 </main>
 
@@ -686,7 +686,7 @@ let touchStartX = 0;
 let touchStartY = 0;
 let flasherLoaded = false;
 
-const flasherSource = location.hostname.endsWith('github.io') ? 'index.html' : 'docs/index.html';
+const flasherSource = location.hostname.endsWith('github.io') ? 'flasher.html' : 'docs/index.html';
 flasherOpenLink.href = flasherSource;
 
 document.querySelectorAll('.mode-tab').forEach(tab => tab.addEventListener('click', () => {

@@ -10,11 +10,11 @@
 
 上游桌面参考：[STUPIDDDD0/waveshare-ESP32-S3-Touch-LCD-1.85B-desktop](https://github.com/STUPIDDDD0/waveshare-ESP32-S3-Touch-LCD-1.85B-desktop)。本仓库保留其 ESP-IDF/LVGL9 桌面运行时，并在 `firmware/main/app_codex/`、`firmware/main/app_dsh/` 增加两个独立应用插件。
 
-## 在线烧录
+## 统一入口
 
-打开 [在线烧录页面](https://yhyh0000.github.io/dsh-esp32-dial/)，连接标有 USB 的接口，选择 COM3 对应的串口后烧录。每次推送到 `main`，GitHub Actions 会使用 ESP-IDF 5.5.3 构建并发布合并镜像。
+打开 [Codex Agent Companion 统一入口](https://yhyh0000.github.io/dsh-esp32-dial/)，首页是设备 UI 模拟器，顶部 Tab 可切换到在线烧录。连接标有 USB 的接口，选择对应串口后烧录。每次推送到 `main`，GitHub Actions 会使用 ESP-IDF 5.5.3 构建并发布合并镜像。
 
-设备 UI 调试页：[Codex Agent Companion](https://yhyh0000.github.io/dsh-esp32-dial/companion-ui-v1.html)。页面内的“在线烧录”Tab 复用同一套 WebSerial 工具；本地调试时运行 `python -m http.server 4173` 后打开 `http://127.0.0.1:4173/companion-ui-v1.html`。
+设备 UI 调试页保留兼容地址：[Codex Agent Companion](https://yhyh0000.github.io/dsh-esp32-dial/companion-ui-v1.html)。独立烧录页保留在 [flasher.html](https://yhyh0000.github.io/dsh-esp32-dial/flasher.html)。本地调试时运行 `python -m http.server 4173` 后打开 `http://127.0.0.1:4173/companion-ui-v1.html`。
 
 ## 构建结构
 
