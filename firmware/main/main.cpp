@@ -139,7 +139,9 @@ extern "C" void app_main(void)
         /* Keep both native apps: Companion is the new primary surface, Codex remains available for the agent console. */
         auto codexApp = CodexApp::requestInstance();
         ESP_UTILS_CHECK_FALSE_EXIT(phone->installApp(codexApp), "Install CodexApp failed");
-        auto companionApp = CompanionApp::requestInstance();
+        // Companion owns the full circular canvas; the stock system status bar
+        // would otherwise consume the top strip and collide with the app header.
+        auto companionApp = CompanionApp::requestInstance(false, false);
         ESP_UTILS_CHECK_FALSE_EXIT(phone->installApp(companionApp), "Install CompanionApp failed");
 
         /* Xiaolan owns page 0 of the launcher.  It is a home-page widget, not

@@ -128,7 +128,7 @@ h1 {
   width: 33.333333%;
   height: 100%;
   position: relative;
-  padding: 47px 50px 42px;
+  padding: 39px 40px 30px;
   flex: 0 0 33.333333%;
   overflow: hidden;
 }
@@ -145,10 +145,10 @@ h1 {
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  font-size: 11px;
+  font-size: 10px;
 }
 .page-title { color: var(--ink); font-weight: 700; letter-spacing: .2px; }
-.page-state { color: var(--mint); font-size: 9px; white-space: nowrap; }
+.page-state { color: var(--mint); font-size: 8px; white-space: nowrap; }
 .page-state.warn { color: var(--amber); }
 .page-body { height: 258px; display: flex; flex-direction: column; }
 .page-foot {
@@ -156,7 +156,7 @@ h1 {
   justify-content: center;
   gap: 7px;
   position: absolute;
-  bottom: 17px;
+  bottom: 13px;
   left: 0;
   right: 0;
 }
@@ -180,6 +180,7 @@ h1 {
   color: rgba(244,243,236,.5);
   font-size: 9px;
   pointer-events: none;
+  display: none;
 }
 .system-bar span { white-space: nowrap; }
 .system-bar .network { color: var(--mint); }
@@ -244,7 +245,7 @@ h1 {
 
 /* Mail page */
 .mail-page { background: #1a1916; }
-.provider-tabs { display: flex; gap: 6px; margin-top: 16px; }
+.provider-tabs { display: flex; gap: 6px; margin-top: 12px; }
 .provider-tab {
   border: 1px solid var(--line);
   border-radius: 5px;
@@ -258,7 +259,7 @@ h1 {
 .mail-count { color: var(--amber); font-size: 29px; line-height: 1; font-variant-numeric: tabular-nums; }
 .mail-count small { color: var(--muted); font-size: 10px; margin-left: 4px; }
 .sync-label { color: var(--muted); font-size: 9px; }
-.mail-list { display: flex; flex-direction: column; gap: 0; margin-top: 10px; overflow: auto; padding-right: 2px; }
+.mail-list { display: flex; flex-direction: column; gap: 0; margin-top: 8px; overflow: auto; padding-right: 2px; }
 .mail-list::-webkit-scrollbar { width: 0; }
 .mail-item {
   width: 100%;
@@ -283,7 +284,7 @@ h1 {
 .mail-time { color: var(--dim); font-size: 9px; align-self: start; }
 
 /* Mail detail */
-.mail-detail { position: absolute; inset: 0; z-index: 10; background: #1a1916; padding: 47px 50px 42px; display: none; }
+.mail-detail { position: absolute; inset: 0; z-index: 10; background: #1a1916; padding: 39px 40px 30px; display: none; }
 .mail-detail.visible { display: block; }
 .icon-button {
   width: 28px;
@@ -430,7 +431,7 @@ h1 {
   .intro { padding-top: 0; min-width: 0; }
   .controls { min-width: 0; }
   .device { width: min(360px, 46vw); height: min(360px, 46vw); flex-basis: min(360px, 46vw); }
-  .page { padding-left: 50px; padding-right: 50px; }
+  .page { padding-left: 40px; padding-right: 40px; }
 }
 
 @media (max-width: 560px) {

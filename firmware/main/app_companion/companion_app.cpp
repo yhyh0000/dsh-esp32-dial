@@ -14,6 +14,8 @@
 namespace {
 constexpr char TAG[] = "CompanionApp";
 constexpr uint32_t kIdleTimeoutMs = 18000;
+constexpr lv_coord_t kPageInset = 40;
+constexpr lv_coord_t kPageWidth = 280;
 
 static esp_brookesia::systems::base::App::Config makeCompanionCoreConfig()
 {
@@ -344,20 +346,21 @@ lv_obj_t *CompanionApp::makeLabel(lv_obj_t *parent, const char *text, lv_color_t
     lv_obj_set_style_text_color(label, text_color, 0);
     if (width != LV_SIZE_CONTENT) {
         lv_obj_set_width(label, width);
-        lv_label_set_long_mode(label, LV_LABEL_LONG_MODE_WRAP);
+        lv_label_set_long_mode(label, LV_LABEL_LONG_MODE_CLIP);
     }
     return label;
 }
 
 void CompanionApp::makePageHeader(lv_obj_t *parent, const char *title, const char *status, lv_color_t accent, lv_obj_t **status_out)
 {
-    lv_obj_t *heading = makeLabel(parent, title, color(0xF4F3EC), 220);
-    lv_obj_set_style_text_font(heading, &lv_font_montserrat_18, 0);
-    lv_obj_align(heading, LV_ALIGN_TOP_LEFT, 0, 0);
+    lv_obj_t *heading = makeLabel(parent, title, color(0xF4F3EC), 160);
+    lv_obj_set_style_text_font(heading, &esp_brookesia_font_maison_neue_book_16, 0);
+    lv_obj_align(heading, LV_ALIGN_TOP_LEFT, kPageInset, 35);
 
-    lv_obj_t *state = makeLabel(parent, status, accent, 220);
-    lv_obj_set_style_text_font(state, &lv_font_montserrat_16, 0);
-    lv_obj_align(state, LV_ALIGN_TOP_LEFT, 0, 28);
+    lv_obj_t *state = makeLabel(parent, status, accent, 120);
+    lv_obj_set_style_text_font(state, &esp_brookesia_font_maison_neue_book_10, 0);
+    lv_obj_set_style_text_align(state, LV_TEXT_ALIGN_RIGHT, 0);
+    lv_obj_align(state, LV_ALIGN_TOP_RIGHT, -kPageInset, 40);
     if (status_out) *status_out = state;
 }
 
@@ -370,7 +373,7 @@ void CompanionApp::makePageDots(lv_obj_t *parent, uint8_t active_index)
         lv_obj_set_style_border_width(dot, 0, 0);
         lv_obj_set_style_bg_color(dot, i == active_index ? color(0xC4ED72) : color(0x56615A), 0);
         lv_obj_set_style_bg_opa(dot, LV_OPA_COVER, 0);
-        lv_obj_align(dot, LV_ALIGN_BOTTOM_MID, (i - 1) * 15, -7);
+        lv_obj_align(dot, LV_ALIGN_BOTTOM_MID, (i - 1) * 15, -15);
     }
 }
 
@@ -378,32 +381,36 @@ void CompanionApp::createVoicePage(lv_obj_t *tile)
 {
     lv_obj_set_style_bg_color(tile, color(0x121A15), 0);
     lv_obj_set_style_bg_opa(tile, LV_OPA_COVER, 0);
-    lv_obj_set_style_pad_all(tile, 31, 0);
+    lv_obj_set_style_pad_all(tile, 0, 0);
     makePageHeader(tile, "VOICE LOG", "BRIDGE OFFLINE", color(0xE0A34A), &_voice_connection);
 
-    _record_state = makeLabel(tile, "READY TO RECORD", color(0xA1AAA1), 250);
+    _record_state = makeLabel(tile, "READY TO RECORD", color(0xA1AAA1), kPageWidth);
     lv_obj_set_style_text_align(_record_state, LV_TEXT_ALIGN_CENTER, 0);
-    lv_obj_align(_record_state, LV_ALIGN_TOP_MID, 0, 73);
+    lv_obj_set_style_text_font(_record_state, &esp_brookesia_font_maison_neue_book_12, 0);
+    lv_obj_align(_record_state, LV_ALIGN_TOP_MID, 0, 78);
 
     _record_button = lv_button_create(tile);
-    lv_obj_set_size(_record_button, 122, 78);
-    lv_obj_align(_record_button, LV_ALIGN_TOP_MID, 0, 103);
+    lv_obj_set_size(_record_button, 108, 108);
+    lv_obj_align(_record_button, LV_ALIGN_TOP_MID, 0, 104);
     lv_obj_set_style_radius(_record_button, LV_RADIUS_CIRCLE, LV_PART_MAIN);
     lv_obj_set_style_bg_color(_record_button, color(0x2A3924), LV_PART_MAIN);
     lv_obj_set_style_border_color(_record_button, color(0xC4ED72), LV_PART_MAIN);
     lv_obj_set_style_border_width(_record_button, 1, LV_PART_MAIN);
+    lv_obj_set_style_shadow_width(_record_button, 0, LV_PART_MAIN);
     lv_obj_add_event_cb(_record_button, onRecordClicked, LV_EVENT_CLICKED, this);
-    _record_label = makeLabel(_record_button, "RECORD", color(0xF4F3EC), 100);
+    _record_label = makeLabel(_record_button, "RECORD", color(0xF4F3EC), 96);
+    lv_obj_set_style_text_font(_record_label, &esp_brookesia_font_maison_neue_book_12, 0);
     lv_obj_set_style_text_align(_record_label, LV_TEXT_ALIGN_CENTER, 0);
     lv_obj_center(_record_label);
 
-    lv_obj_t *timer = makeLabel(tile, "00:00", color(0xF4F3EC), 250);
+    lv_obj_t *timer = makeLabel(tile, "00:00", color(0xF4F3EC), kPageWidth);
     lv_obj_set_style_text_font(timer, &lv_font_montserrat_24, 0);
     lv_obj_set_style_text_align(timer, LV_TEXT_ALIGN_CENTER, 0);
-    lv_obj_align(timer, LV_ALIGN_TOP_MID, 0, 196);
-    lv_obj_t *hint = makeLabel(tile, "Audio will upload after you stop", color(0x667068), 260);
+    lv_obj_align(timer, LV_ALIGN_TOP_MID, 0, 226);
+    lv_obj_t *hint = makeLabel(tile, "Audio uploads after you stop", color(0x667068), kPageWidth);
+    lv_obj_set_style_text_font(hint, &esp_brookesia_font_maison_neue_book_10, 0);
     lv_obj_set_style_text_align(hint, LV_TEXT_ALIGN_CENTER, 0);
-    lv_obj_align(hint, LV_ALIGN_TOP_MID, 0, 232);
+    lv_obj_align(hint, LV_ALIGN_TOP_MID, 0, 266);
     makePageDots(tile, 0);
 }
 
@@ -411,30 +418,35 @@ void CompanionApp::createMailPage(lv_obj_t *tile)
 {
     lv_obj_set_style_bg_color(tile, color(0x1A1916), 0);
     lv_obj_set_style_bg_opa(tile, LV_OPA_COVER, 0);
-    lv_obj_set_style_pad_all(tile, 31, 0);
+    lv_obj_set_style_pad_all(tile, 0, 0);
     makePageHeader(tile, "MAIL", "MAIL OFFLINE", color(0xE0A34A), &_mail_connection);
 
-    _mail_summary = makeLabel(tile, "-- UNREAD", color(0xFFB968), 260);
+    _mail_summary = makeLabel(tile, "-- UNREAD", color(0xFFB968), kPageWidth);
     lv_obj_set_style_text_font(_mail_summary, &lv_font_montserrat_24, 0);
-    lv_obj_align(_mail_summary, LV_ALIGN_TOP_LEFT, 0, 67);
-    _mail_accounts = makeLabel(tile, "QQ --   GOOGLE --", color(0xA1AAA1), 260);
-    lv_obj_align(_mail_accounts, LV_ALIGN_TOP_LEFT, 0, 96);
+    lv_obj_align(_mail_summary, LV_ALIGN_TOP_LEFT, kPageInset, 76);
+    _mail_accounts = makeLabel(tile, "QQ --   GOOGLE --", color(0xA1AAA1), kPageWidth);
+    lv_obj_set_style_text_font(_mail_accounts, &esp_brookesia_font_maison_neue_book_10, 0);
+    lv_obj_align(_mail_accounts, LV_ALIGN_TOP_LEFT, kPageInset, 108);
 
     const char *subjects[] = {"--", "--", "--"};
     const char *times[] = {"--", "--", "--"};
     for (int i = 0; i < 3; ++i) {
         lv_obj_t *row = lv_button_create(tile);
-        lv_obj_set_size(row, 260, 42);
-        lv_obj_align(row, LV_ALIGN_TOP_LEFT, 0, 124 + i * 47);
+        lv_obj_set_size(row, kPageWidth, 40);
+        lv_obj_align(row, LV_ALIGN_TOP_LEFT, kPageInset, 136 + i * 45);
         lv_obj_set_style_radius(row, 0, LV_PART_MAIN);
         lv_obj_set_style_bg_color(row, color(0x25231F), LV_PART_MAIN);
         lv_obj_set_style_border_width(row, 0, LV_PART_MAIN);
-        _mail_subjects[i] = makeLabel(row, subjects[i], color(0xF4F3EC), 190);
-        lv_obj_set_style_text_font(_mail_subjects[i], &lv_font_montserrat_16, 0);
-        lv_obj_align(_mail_subjects[i], LV_ALIGN_TOP_LEFT, 9, 5);
-        _mail_times[i] = makeLabel(row, times[i], color(0x667068), 68);
+        lv_obj_set_style_pad_all(row, 0, LV_PART_MAIN);
+        lv_obj_set_style_shadow_width(row, 0, LV_PART_MAIN);
+        _mail_subjects[i] = makeLabel(row, subjects[i], color(0xF4F3EC), 196);
+        lv_obj_set_style_text_font(_mail_subjects[i], &esp_brookesia_font_maison_neue_book_12, 0);
+        lv_label_set_long_mode(_mail_subjects[i], LV_LABEL_LONG_MODE_DOTS);
+        lv_obj_align(_mail_subjects[i], LV_ALIGN_TOP_LEFT, 9, 10);
+        _mail_times[i] = makeLabel(row, times[i], color(0x667068), 52);
+        lv_obj_set_style_text_font(_mail_times[i], &esp_brookesia_font_maison_neue_book_10, 0);
         lv_obj_set_style_text_align(_mail_times[i], LV_TEXT_ALIGN_RIGHT, 0);
-        lv_obj_align(_mail_times[i], LV_ALIGN_TOP_RIGHT, -8, 5);
+        lv_obj_align(_mail_times[i], LV_ALIGN_TOP_RIGHT, -9, 11);
     }
     makePageDots(tile, 1);
 }
@@ -443,34 +455,37 @@ void CompanionApp::createQuotaPage(lv_obj_t *tile)
 {
     lv_obj_set_style_bg_color(tile, color(0x111B1A), 0);
     lv_obj_set_style_bg_opa(tile, LV_OPA_COVER, 0);
-    lv_obj_set_style_pad_all(tile, 31, 0);
+    lv_obj_set_style_pad_all(tile, 0, 0);
     makePageHeader(tile, "CODEX QUOTA", "QUOTA UNAVAILABLE", color(0xE0A34A), &_quota_connection);
 
     _quota_ring = lv_arc_create(tile);
-    lv_obj_set_size(_quota_ring, 138, 138);
-    lv_obj_align(_quota_ring, LV_ALIGN_TOP_MID, 0, 61);
+    lv_obj_set_size(_quota_ring, 128, 128);
+    lv_obj_align(_quota_ring, LV_ALIGN_TOP_MID, 0, 76);
     lv_arc_set_range(_quota_ring, 0, 100);
     lv_arc_set_value(_quota_ring, 0);
     lv_obj_remove_style(_quota_ring, nullptr, LV_PART_KNOB);
-    lv_obj_set_style_arc_width(_quota_ring, 12, LV_PART_MAIN);
-    lv_obj_set_style_arc_width(_quota_ring, 12, LV_PART_INDICATOR);
+    lv_obj_set_style_arc_width(_quota_ring, 10, LV_PART_MAIN);
+    lv_obj_set_style_arc_width(_quota_ring, 10, LV_PART_INDICATOR);
     lv_obj_set_style_arc_color(_quota_ring, color(0x2C3937), LV_PART_MAIN);
     lv_obj_set_style_arc_color(_quota_ring, color(0x82D8D1), LV_PART_INDICATOR);
 
-    _quota_remaining = makeLabel(tile, "--%", color(0x82D8D1), 130);
-    lv_obj_set_style_text_font(_quota_remaining, &lv_font_montserrat_26, 0);
+    _quota_remaining = makeLabel(tile, "--%", color(0x82D8D1), 120);
+    lv_obj_set_style_text_font(_quota_remaining, &lv_font_montserrat_24, 0);
     lv_obj_set_style_text_align(_quota_remaining, LV_TEXT_ALIGN_CENTER, 0);
-    lv_obj_align(_quota_remaining, LV_ALIGN_TOP_MID, 0, 104);
-    _quota_window = makeLabel(tile, "5H REMAINING", color(0xA1AAA1), 130);
+    lv_obj_align(_quota_remaining, LV_ALIGN_TOP_MID, 0, 116);
+    _quota_window = makeLabel(tile, "5H REMAINING", color(0xA1AAA1), 120);
+    lv_obj_set_style_text_font(_quota_window, &esp_brookesia_font_maison_neue_book_10, 0);
     lv_obj_set_style_text_align(_quota_window, LV_TEXT_ALIGN_CENTER, 0);
-    lv_obj_align(_quota_window, LV_ALIGN_TOP_MID, 0, 137);
+    lv_obj_align(_quota_window, LV_ALIGN_TOP_MID, 0, 150);
 
-    _quota_secondary = makeLabel(tile, "7D --%     RESET CARDS 0", color(0xC4ED72), 260);
+    _quota_secondary = makeLabel(tile, "7D --%     RESET CARDS 0", color(0xC4ED72), kPageWidth);
+    lv_obj_set_style_text_font(_quota_secondary, &esp_brookesia_font_maison_neue_book_10, 0);
     lv_obj_set_style_text_align(_quota_secondary, LV_TEXT_ALIGN_CENTER, 0);
-    lv_obj_align(_quota_secondary, LV_ALIGN_TOP_MID, 0, 217);
-    _quota_reset = makeLabel(tile, "NEXT RESET --:--:--", color(0x667068), 260);
+    lv_obj_align(_quota_secondary, LV_ALIGN_TOP_MID, 0, 247);
+    _quota_reset = makeLabel(tile, "NEXT RESET --:--:--", color(0x667068), kPageWidth);
+    lv_obj_set_style_text_font(_quota_reset, &esp_brookesia_font_maison_neue_book_10, 0);
     lv_obj_set_style_text_align(_quota_reset, LV_TEXT_ALIGN_CENTER, 0);
-    lv_obj_align(_quota_reset, LV_ALIGN_TOP_MID, 0, 244);
+    lv_obj_align(_quota_reset, LV_ALIGN_TOP_MID, 0, 276);
     makePageDots(tile, 2);
 }
 
