@@ -24,7 +24,10 @@ static void copy_text(char *out, size_t capacity, const char *value)
 {
     if (!out || capacity == 0) return;
     if (!value) value = "";
-    snprintf(out, capacity, "%s", value);
+    size_t length = strlen(value);
+    if (length >= capacity) length = capacity - 1;
+    memcpy(out, value, length);
+    out[length] = '\0';
 }
 
 static int hex_value(char value)
@@ -130,8 +133,8 @@ static esp_err_t config_page_handler(httpd_req_t *request)
         "<title>Codex Dial 配置</title><style>"
         "*{box-sizing:border-box}body{margin:0;background:#101612;color:#f4f3ec;font:15px system-ui,-apple-system,Segoe UI,sans-serif}"
         "main{max-width:680px;margin:0 auto;padding:28px 18px 44px}h1{font-size:25px;margin:0 0 6px}h2{font-size:16px;margin:26px 0 10px;color:#c4ed72}p{color:#a1aaa1;line-height:1.55}"
-        "section{border-top:1px solid #2b352e;padding-top:4px}label{display:block;margin:13px 0 5px;color:#dbe3d7}input{width:100%;padding:12px;border:1px solid #3a463d;border-radius:7px;background:#18221c;color:#fff;font-size:16px}"
-        ".row{display:grid;grid-template-columns:1fr 130px;gap:10px}.hint{font-size:13px;color:#7f8e82}button{margin-top:28px;width:100%;padding:13px;border:0;border-radius:7px;background:#c4ed72;color:#15200f;font-weight:700;font-size:16px}"
+        "section{border-top:1px solid #2b352e;padding-top:4px}label{display:block;margin:13px 0 5px;color:#dbe3d7}input{width:100%%;padding:12px;border:1px solid #3a463d;border-radius:7px;background:#18221c;color:#fff;font-size:16px}"
+        ".row{display:grid;grid-template-columns:1fr 130px;gap:10px}.hint{font-size:13px;color:#7f8e82}button{margin-top:28px;width:100%%;padding:13px;border:0;border-radius:7px;background:#c4ed72;color:#15200f;font-weight:700;font-size:16px}"
         "code{color:#c4ed72}@media(max-width:480px){.row{grid-template-columns:1fr 100px}}"
         "</style><main><h1>Codex Dial 配置</h1><p>连接到本设备热点后填写。保存后设备会重启并连接目标 Wi‑Fi。密码留空表示保留已保存值。</p>"
         "<form method='post' action='/save'><section><h2>1 · Wi‑Fi</h2>"
