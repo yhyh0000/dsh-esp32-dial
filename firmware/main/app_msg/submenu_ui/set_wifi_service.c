@@ -329,7 +329,7 @@ static void event_handler(void *arg, esp_event_base_t event_base,
         if (s_status_bar_cb) {
             s_status_bar_cb(WIFI_STATE_DISCONNECTED);
         }
-        if (s_has_saved_ssid && !device_provisioning_ap_active()) {
+        if (s_has_saved_ssid) {
             esp_wifi_connect();
         }
 
@@ -374,7 +374,7 @@ static void event_handler(void *arg, esp_event_base_t event_base,
         if (s_status_bar_cb) {
             s_status_bar_cb(WIFI_STATE_DISCONNECTED);
         }
-        if (s_has_saved_ssid && !device_provisioning_ap_active()) {
+        if (s_has_saved_ssid) {
             if (s_disconnect_retries++ < 5) {
                 esp_wifi_connect();
             } else {
@@ -439,16 +439,22 @@ void wifi_init_sta(void)
         IP_EVENT, IP_EVENT_STA_GOT_IP, &event_handler, NULL, &inst_ip));
 
     ESP_ERROR_CHECK(esp_wifi_set_storage(WIFI_STORAGE_FLASH));
-    ESP_ERROR_CHECK(esp_wifi_set_mode(s_has_saved_ssid ? WIFI_MODE_STA : WIFI_MODE_AP));
+
+    /*
+     * Keep the setup AP available on every boot.  A previous firmware may
+     * have left an SSID or partial service config in NVS; using that state to
+     * hide the only configuration path makes recovery impossible.  APSTA
+     * lets a configured device keep its setup page while it also connects to
+     * the home network for normal operation.
+     */
+    device_provisioning_start_ap();
+    ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_APSTA));
     ESP_ERROR_CHECK(esp_wifi_start());
 
-    if (!s_has_saved_ssid) {
-        device_provisioning_start_ap();
-    }
     device_provisioning_start_http();
     s_wifi_ready = true;
 
-    ESP_LOGI(TAG, "wifi_init_sta finished (saved_ssid=%s, service_config=%s).",
+    ESP_LOGI(TAG, "wifi_init_sta finished (setup_ap=always, saved_ssid=%s, service_config=%s).",
              s_has_saved_ssid ? "yes" : "no", has_new_service_config ? "yes" : "no");
 
     xTaskCreate(wifi_scan_ui_task, "wifi_scan_ui_task", 4096, NULL, 5, NULL);
