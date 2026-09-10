@@ -21,6 +21,49 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Inject private firmware defaults
+        working-directory: firmware/main
+        env:
+          DSH_WIFI_SSID: ${{ secrets.DSH_WIFI_SSID }}
+          DSH_WIFI_PASSWORD: ${{ secrets.DSH_WIFI_PASSWORD }}
+          DSH_BRIDGE_HOST: ${{ secrets.DSH_BRIDGE_HOST }}
+          DSH_BRIDGE_PORT: ${{ secrets.DSH_BRIDGE_PORT }}
+          DSH_BRIDGE_TOKEN: ${{ secrets.DSH_BRIDGE_TOKEN }}
+          DSH_QQ_EMAIL: ${{ secrets.DSH_QQ_EMAIL }}
+          DSH_QQ_APP_PASSWORD: ${{ secrets.DSH_QQ_APP_PASSWORD }}
+          DSH_GMAIL_EMAIL: ${{ secrets.DSH_GMAIL_EMAIL }}
+          DSH_GMAIL_APP_PASSWORD: ${{ secrets.DSH_GMAIL_APP_PASSWORD }}
+          DSH_SUB2API_URL: ${{ secrets.DSH_SUB2API_URL }}
+          DSH_SUB2API_TOKEN: ${{ secrets.DSH_SUB2API_TOKEN }}
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+
+          values = {
+              "DSH_DEFAULT_WIFI_SSID": "DSH_WIFI_SSID",
+              "DSH_DEFAULT_WIFI_PASSWORD": "DSH_WIFI_PASSWORD",
+              "DSH_DEFAULT_BRIDGE_HOST": "DSH_BRIDGE_HOST",
+              "DSH_DEFAULT_BRIDGE_TOKEN": "DSH_BRIDGE_TOKEN",
+              "DSH_DEFAULT_QQ_EMAIL": "DSH_QQ_EMAIL",
+              "DSH_DEFAULT_QQ_APP_PASSWORD": "DSH_QQ_APP_PASSWORD",
+              "DSH_DEFAULT_GMAIL_EMAIL": "DSH_GMAIL_EMAIL",
+              "DSH_DEFAULT_GMAIL_APP_PASSWORD": "DSH_GMAIL_APP_PASSWORD",
+              "DSH_DEFAULT_SUB2API_URL": "DSH_SUB2API_URL",
+              "DSH_DEFAULT_SUB2API_TOKEN": "DSH_SUB2API_TOKEN",
+          }
+          with open("device_build_defaults.h", "w", encoding="utf-8") as out:
+              out.write("#pragma once\n")
+              for macro, env_name in values.items():
+                  out.write(f"#define {macro} {json.dumps(os.environ.get(env_name, ''))}\n")
+              port = os.environ.get("DSH_BRIDGE_PORT", "3082") or "3082"
+              try:
+                  port = str(max(1, min(65535, int(port))))
+              except ValueError:
+                  port = "3082"
+              out.write(f"#define DSH_DEFAULT_BRIDGE_PORT {port}\n")
+          PY
+
       - name: Build ESP-IDF desktop
         working-directory: firmware
         run: |

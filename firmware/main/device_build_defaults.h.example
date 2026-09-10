@@ -1,0 +1,18 @@
+#pragma once
+
+/*
+ * Copy this file to device_build_defaults.h for a private/local build.
+ * The GitHub Actions workflow can generate the same file from repository
+ * secrets named DSH_*; never commit the generated file.
+ */
+#define DSH_DEFAULT_WIFI_SSID ""
+#define DSH_DEFAULT_WIFI_PASSWORD ""
+#define DSH_DEFAULT_BRIDGE_HOST ""
+#define DSH_DEFAULT_BRIDGE_PORT 3082
+#define DSH_DEFAULT_BRIDGE_TOKEN ""
+#define DSH_DEFAULT_QQ_EMAIL ""
+#define DSH_DEFAULT_QQ_APP_PASSWORD ""
+#define DSH_DEFAULT_GMAIL_EMAIL ""
+#define DSH_DEFAULT_GMAIL_APP_PASSWORD ""
+#define DSH_DEFAULT_SUB2API_URL ""
+#define DSH_DEFAULT_SUB2API_TOKEN ""

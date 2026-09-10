@@ -117,6 +117,8 @@ static esp_err_t config_page_handler(httpd_req_t *request)
     device_config_load(&config);
     wifi_config_t wifi = {0};
     esp_wifi_get_config(WIFI_IF_STA, &wifi);
+    device_config_apply_wifi_defaults((char *)wifi.sta.ssid, sizeof(wifi.sta.ssid),
+                                      (char *)wifi.sta.password, sizeof(wifi.sta.password));
 
     char ssid[96], host[192], qq[192], gmail[192], quota_url[288];
     html_escape((const char *)wifi.sta.ssid, ssid, sizeof(ssid));

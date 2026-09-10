@@ -426,6 +426,11 @@ void wifi_init_sta(void)
 
     wifi_config_t saved = {0};
     esp_wifi_get_config(WIFI_IF_STA, &saved);
+    device_config_apply_wifi_defaults((char *)saved.sta.ssid, sizeof(saved.sta.ssid),
+                                      (char *)saved.sta.password, sizeof(saved.sta.password));
+    if (saved.sta.ssid[0] != '\0') {
+        ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &saved));
+    }
     device_service_config_t service = {0};
     device_config_load(&service);
     const bool has_new_service_config = service.bridge_host[0] != '\0' && service.bridge_token[0] != '\0';

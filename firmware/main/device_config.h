@@ -1,6 +1,7 @@
 #pragma once
 
 #include <stdbool.h>
+#include <stddef.h>
 #include <stdint.h>
 
 #include "esp_err.h"
@@ -30,6 +31,10 @@ typedef struct {
 
 bool device_config_load(device_service_config_t *config);
 esp_err_t device_config_save(const device_service_config_t *config);
+
+/* Apply optional build-time defaults only when the board has no saved value. */
+void device_config_apply_wifi_defaults(char *ssid, size_t ssid_capacity,
+                                       char *password, size_t password_capacity);
 
 #ifdef __cplusplus
 }

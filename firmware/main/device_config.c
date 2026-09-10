@@ -4,6 +4,46 @@
 
 #include <string.h>
 
+#if defined(__has_include)
+#if __has_include("device_build_defaults.h")
+#include "device_build_defaults.h"
+#endif
+#endif
+
+#ifndef DSH_DEFAULT_WIFI_SSID
+#define DSH_DEFAULT_WIFI_SSID ""
+#endif
+#ifndef DSH_DEFAULT_WIFI_PASSWORD
+#define DSH_DEFAULT_WIFI_PASSWORD ""
+#endif
+#ifndef DSH_DEFAULT_BRIDGE_HOST
+#define DSH_DEFAULT_BRIDGE_HOST ""
+#endif
+#ifndef DSH_DEFAULT_BRIDGE_PORT
+#define DSH_DEFAULT_BRIDGE_PORT 3082
+#endif
+#ifndef DSH_DEFAULT_BRIDGE_TOKEN
+#define DSH_DEFAULT_BRIDGE_TOKEN ""
+#endif
+#ifndef DSH_DEFAULT_QQ_EMAIL
+#define DSH_DEFAULT_QQ_EMAIL ""
+#endif
+#ifndef DSH_DEFAULT_QQ_APP_PASSWORD
+#define DSH_DEFAULT_QQ_APP_PASSWORD ""
+#endif
+#ifndef DSH_DEFAULT_GMAIL_EMAIL
+#define DSH_DEFAULT_GMAIL_EMAIL ""
+#endif
+#ifndef DSH_DEFAULT_GMAIL_APP_PASSWORD
+#define DSH_DEFAULT_GMAIL_APP_PASSWORD ""
+#endif
+#ifndef DSH_DEFAULT_SUB2API_URL
+#define DSH_DEFAULT_SUB2API_URL ""
+#endif
+#ifndef DSH_DEFAULT_SUB2API_TOKEN
+#define DSH_DEFAULT_SUB2API_TOKEN ""
+#endif
+
 static const char *TAG_NAMESPACE = "dsh-config";
 
 static void read_string(nvs_handle_t handle, const char *key, char *out, size_t capacity)
@@ -13,6 +53,30 @@ static void read_string(nvs_handle_t handle, const char *key, char *out, size_t 
     out[capacity - 1] = '\0';
 }
 
+static void copy_default(char *out, size_t capacity, const char *value)
+{
+    if (!out || capacity == 0 || out[0] != '\0' || !value || value[0] == '\0') return;
+    size_t length = strlen(value);
+    if (length >= capacity) length = capacity - 1;
+    memcpy(out, value, length);
+    out[length] = '\0';
+}
+
+static void apply_service_defaults(device_service_config_t *config)
+{
+    copy_default(config->bridge_host, sizeof(config->bridge_host), DSH_DEFAULT_BRIDGE_HOST);
+    if (config->bridge_port == 3082 && DSH_DEFAULT_BRIDGE_PORT > 0) {
+        config->bridge_port = (uint16_t)DSH_DEFAULT_BRIDGE_PORT;
+    }
+    copy_default(config->bridge_token, sizeof(config->bridge_token), DSH_DEFAULT_BRIDGE_TOKEN);
+    copy_default(config->qq_email, sizeof(config->qq_email), DSH_DEFAULT_QQ_EMAIL);
+    copy_default(config->qq_app_password, sizeof(config->qq_app_password), DSH_DEFAULT_QQ_APP_PASSWORD);
+    copy_default(config->gmail_email, sizeof(config->gmail_email), DSH_DEFAULT_GMAIL_EMAIL);
+    copy_default(config->gmail_app_password, sizeof(config->gmail_app_password), DSH_DEFAULT_GMAIL_APP_PASSWORD);
+    copy_default(config->sub2api_url, sizeof(config->sub2api_url), DSH_DEFAULT_SUB2API_URL);
+    copy_default(config->sub2api_token, sizeof(config->sub2api_token), DSH_DEFAULT_SUB2API_TOKEN);
+}
+
 bool device_config_load(device_service_config_t *config)
 {
     if (!config) return false;
@@ -20,7 +84,10 @@ bool device_config_load(device_service_config_t *config)
     config->bridge_port = 3082;
 
     nvs_handle_t handle = 0;
-    if (nvs_open(TAG_NAMESPACE, NVS_READONLY, &handle) != ESP_OK) return true;
+    if (nvs_open(TAG_NAMESPACE, NVS_READONLY, &handle) != ESP_OK) {
+        apply_service_defaults(config);
+        return true;
+    }
 
     read_string(handle, "bridge_host", config->bridge_host, sizeof(config->bridge_host));
     uint16_t port = 0;
@@ -33,7 +100,15 @@ bool device_config_load(device_service_config_t *config)
     read_string(handle, "sub2api_url", config->sub2api_url, sizeof(config->sub2api_url));
     read_string(handle, "sub2api_token", config->sub2api_token, sizeof(config->sub2api_token));
     nvs_close(handle);
+    apply_service_defaults(config);
     return true;
+}
+
+void device_config_apply_wifi_defaults(char *ssid, size_t ssid_capacity,
+                                       char *password, size_t password_capacity)
+{
+    copy_default(ssid, ssid_capacity, DSH_DEFAULT_WIFI_SSID);
+    copy_default(password, password_capacity, DSH_DEFAULT_WIFI_PASSWORD);
 }
 
 esp_err_t device_config_save(const device_service_config_t *config)

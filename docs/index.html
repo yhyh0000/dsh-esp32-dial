@@ -105,6 +105,7 @@
     <tr><td>4</td><td>串口打印板子 IP；回到家庭 Wi‑Fi 后访问该 IP，可再次修改配置。</td></tr>
   </table>
   <p class="meta">如果热点仍看不到，先确认烧录页的构建信息是本次最新提交，再全片擦除后重烧。串口监视中应出现 <code>setup mode: connect to CODEX-DIAL-SETUP</code>。Bridge token 来自电脑上 <code>node bridge.js</code> 首次启动的本机终端输出；邮箱授权码和 Sub2API Token 在板端表单填写。</p>
+  <p class="meta">单人测试也可以改用构建时默认配置：把参数放到 GitHub Actions Secrets，下一次固件会直接带上默认值；真实密钥不要提交到公开源码。</p>
 </div>
 
 </div>
