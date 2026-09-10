@@ -9,6 +9,7 @@
 #include "esp_wifi.h"
 #include "esp_netif.h"
 #include "device_provisioning.h"
+#include "device_config.h"
 
 #include "set_lv_style.h"
 
@@ -24,6 +25,8 @@ static const char *TAG = "wifi_scan";
 static EventGroupHandle_t s_wifi_event_group;
 static void wifi_scan_ui_task(void *arg);
 static bool s_wifi_initialized = false;
+static bool s_wifi_ready = false;
+static bool s_force_setup_mode = false;
 static bool s_has_saved_ssid = false;
 static uint8_t s_disconnect_retries = 0;
 
@@ -33,6 +36,19 @@ static wifi_status_bar_cb_t s_status_bar_cb = NULL;
 void wifi_register_status_bar_callback(wifi_status_bar_cb_t cb)
 {
     s_status_bar_cb = cb;
+}
+
+void wifi_request_setup_mode(void)
+{
+    s_force_setup_mode = true;
+    if (!s_wifi_ready) {
+        ESP_LOGI(TAG, "setup mode requested; will start after Wi-Fi initialization");
+        return;
+    }
+    s_has_saved_ssid = false;
+    s_disconnect_retries = 0;
+    device_provisioning_start_ap();
+    device_provisioning_start_http();
 }
 
 /**
@@ -410,7 +426,10 @@ void wifi_init_sta(void)
 
     wifi_config_t saved = {0};
     esp_wifi_get_config(WIFI_IF_STA, &saved);
-    s_has_saved_ssid = saved.sta.ssid[0] != '\0';
+    device_service_config_t service = {0};
+    device_config_load(&service);
+    const bool has_new_service_config = service.bridge_host[0] != '\0' && service.bridge_token[0] != '\0';
+    s_has_saved_ssid = saved.sta.ssid[0] != '\0' && has_new_service_config && !s_force_setup_mode;
 
     esp_event_handler_instance_t inst_any;
     esp_event_handler_instance_t inst_ip;
@@ -427,8 +446,10 @@ void wifi_init_sta(void)
         device_provisioning_start_ap();
     }
     device_provisioning_start_http();
+    s_wifi_ready = true;
 
-    ESP_LOGI(TAG, "wifi_init_sta finished (saved_ssid=%s).", s_has_saved_ssid ? "yes" : "no");
+    ESP_LOGI(TAG, "wifi_init_sta finished (saved_ssid=%s, service_config=%s).",
+             s_has_saved_ssid ? "yes" : "no", has_new_service_config ? "yes" : "no");
 
     xTaskCreate(wifi_scan_ui_task, "wifi_scan_ui_task", 4096, NULL, 5, NULL);
 }

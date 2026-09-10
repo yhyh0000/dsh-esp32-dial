@@ -29,6 +29,7 @@ typedef void (*wifi_status_bar_cb_t)(int state);
 void wifi_register_status_bar_callback(wifi_status_bar_cb_t cb);
 
 void wifi_init_sta(void);
+void wifi_request_setup_mode(void);
 void init_wifi_service_screen(lv_obj_t *parent, lv_obj_t *ret_scr);
 
 #ifdef __cplusplus

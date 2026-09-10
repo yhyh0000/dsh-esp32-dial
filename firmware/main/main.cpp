@@ -38,6 +38,8 @@ static esp_brookesia::apps::XiaolanWidget g_xiaolan;
 /* BOOT按键回调：按一下切换背光 + 触摸（模拟手机电源键） */
 static void boot_button_cb(void *arg, void *usr_data)
 {
+    (void)arg;
+    (void)usr_data;
     lv_indev_t *tp = bsp_display_get_input_dev();
     if (g_backlight_on) {
         ESP_LOGI(TAG, "BOOT: Turn off display (backlight + touch)");
@@ -50,6 +52,15 @@ static void boot_button_cb(void *arg, void *usr_data)
         if (tp) lv_indev_enable(tp, true);
         g_backlight_on = true;
     }
+}
+
+/* 长按 BOOT：无论旧 NVS 是否保存过 Wi-Fi，都进入板载配网模式。 */
+static void boot_setup_button_cb(void *arg, void *usr_data)
+{
+    (void)arg;
+    (void)usr_data;
+    ESP_LOGW(TAG, "BOOT long press: entering setup mode");
+    wifi_request_setup_mode();
 }
 
 /* 初始化BOOT按键（GPIO0） */
@@ -71,7 +82,8 @@ static void boot_button_init(void)
         return;
     }
     iot_button_register_cb(btn_handle, BUTTON_SINGLE_CLICK, NULL, boot_button_cb, NULL);
-    ESP_LOGI(TAG, "BOOT button initialized (GPIO0), single-click to toggle backlight");
+    iot_button_register_cb(btn_handle, BUTTON_LONG_PRESS_START, NULL, boot_setup_button_cb, NULL);
+    ESP_LOGI(TAG, "BOOT button initialized (GPIO0), single-click backlight, long-press setup");
 }
 
 extern "C" void app_main(void)
