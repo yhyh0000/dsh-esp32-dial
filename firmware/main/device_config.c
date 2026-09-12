@@ -102,7 +102,7 @@ bool device_config_load(device_service_config_t *config)
     read_string(handle, "gmail_email", config->gmail_email, sizeof(config->gmail_email));
     read_string(handle, "gmail_app_pw", config->gmail_app_password, sizeof(config->gmail_app_password));
     read_string(handle, "sub2api_url", config->sub2api_url, sizeof(config->sub2api_url));
-    read_string(handle, "sub2api_reset_url", config->sub2api_reset_url, sizeof(config->sub2api_reset_url));
+    read_string(handle, "sub2api_reset", config->sub2api_reset_url, sizeof(config->sub2api_reset_url));
     read_string(handle, "sub2api_token", config->sub2api_token, sizeof(config->sub2api_token));
     nvs_close(handle);
     apply_service_defaults(config);
@@ -131,7 +131,7 @@ esp_err_t device_config_save(const device_service_config_t *config)
     if (err == ESP_OK) err = nvs_set_str(handle, "gmail_email", config->gmail_email);
     if (err == ESP_OK) err = nvs_set_str(handle, "gmail_app_pw", config->gmail_app_password);
     if (err == ESP_OK) err = nvs_set_str(handle, "sub2api_url", config->sub2api_url);
-    if (err == ESP_OK) err = nvs_set_str(handle, "sub2api_reset_url", config->sub2api_reset_url);
+    if (err == ESP_OK) err = nvs_set_str(handle, "sub2api_reset", config->sub2api_reset_url);
     if (err == ESP_OK) err = nvs_set_str(handle, "sub2api_token", config->sub2api_token);
     if (err == ESP_OK) err = nvs_commit(handle);
     nvs_close(handle);
