@@ -29,8 +29,8 @@ private:
     int _frame_count = 0;
     int _pose = 0;
     int _outfit = 0;
-    int _image_width = 160;
-    int _image_height = 173;
+    int _image_width = 180;
+    int _image_height = 195;
     bool _dragging = false;
     lv_point_t _drag_offset = {};
 

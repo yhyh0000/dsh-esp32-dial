@@ -19,6 +19,9 @@ constexpr uint32_t kIdleTimeoutMs = 18000;
 constexpr uint32_t kIdleOutfitCycleMs = 15000;
 constexpr lv_coord_t kPageInset = 40;
 constexpr lv_coord_t kPageWidth = 280;
+constexpr lv_coord_t kIdlePetWidth = 180;
+constexpr lv_coord_t kIdlePetHeight = 195;
+constexpr lv_coord_t kIdlePetBottomInset = 58;
 
 static esp_brookesia::systems::base::App::Config makeCompanionCoreConfig()
 {
@@ -675,9 +678,11 @@ bool CompanionApp::run(void)
     lv_obj_add_event_cb(_idle_overlay, onIdleClicked, LV_EVENT_CLICKED, this);
 
     _idle_pet = lv_image_create(_idle_overlay);
-    lv_obj_set_size(_idle_pet, 168, 182);
-    lv_obj_align(_idle_pet, LV_ALIGN_TOP_MID, 0, 104);
+    lv_obj_set_size(_idle_pet, kIdlePetWidth, kIdlePetHeight);
+    // Bottom anchoring keeps the feet stable and leaves headroom for every pose.
+    lv_obj_align(_idle_pet, LV_ALIGN_BOTTOM_MID, 0, -kIdlePetBottomInset);
     lv_image_set_antialias(_idle_pet, false);
+    lv_image_set_inner_align(_idle_pet, LV_IMAGE_ALIGN_CENTER);
     lv_image_set_scale(_idle_pet, 448);
     lv_image_set_src(_idle_pet, &xiaolan_outfits[XIAOLAN_DEFAULT_OUTFIT][0]);
     _idle_pet_started_ms = nowMs();

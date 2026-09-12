@@ -37,8 +37,8 @@ bool XiaolanWidget::begin(lv_obj_t *parent)
     if (!parent || _image) return false;
     _image = lv_image_create(parent);
     if (!_image) return false;
-    _image_width = 168;
-    _image_height = 182;
+    _image_width = 180;
+    _image_height = 195;
     lv_obj_set_size(_image, _image_width, _image_height);
     const lv_coord_t parent_width = lv_obj_get_content_width(parent);
     const lv_coord_t parent_height = lv_obj_get_content_height(parent);
@@ -46,6 +46,7 @@ bool XiaolanWidget::begin(lv_obj_t *parent)
                    parent_width > _image_width ? (parent_width - _image_width) / 2 : 0,
                    parent_height > _image_height ? (parent_height - _image_height) / 2 : 0);
     lv_image_set_antialias(_image, false);
+    lv_image_set_inner_align(_image, LV_IMAGE_ALIGN_CENTER);
     lv_image_set_scale(_image, 448); // 1.75x nearest-neighbour enlargement
     _outfit = XIAOLAN_DEFAULT_OUTFIT;
     selectAnimation("idle");
