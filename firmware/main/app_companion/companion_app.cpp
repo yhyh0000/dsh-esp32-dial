@@ -21,7 +21,7 @@ constexpr lv_coord_t kPageInset = 40;
 constexpr lv_coord_t kPageWidth = 280;
 constexpr lv_coord_t kIdlePetWidth = 180;
 constexpr lv_coord_t kIdlePetHeight = 195;
-constexpr lv_coord_t kIdlePetBottomInset = 58;
+constexpr lv_coord_t kIdlePetBottomInset = 44;
 
 static esp_brookesia::systems::base::App::Config makeCompanionCoreConfig()
 {
@@ -571,7 +571,7 @@ void CompanionApp::applyAppearance()
     }
     // The pet occupies the middle of the circular idle screen; keep the
     // caption below it instead of letting the clock settings overlap the art.
-    lv_obj_align(_idle_date, LV_ALIGN_TOP_MID, 0, 310);
+    lv_obj_align(_idle_date, LV_ALIGN_TOP_MID, 0, 320);
     lv_obj_set_style_text_color(_idle_date, color(_appearance.clock_color), 0);
     saveAppearance();
 }
