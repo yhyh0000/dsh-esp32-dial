@@ -120,12 +120,13 @@ static esp_err_t config_page_handler(httpd_req_t *request)
     device_config_apply_wifi_defaults((char *)wifi.sta.ssid, sizeof(wifi.sta.ssid),
                                       (char *)wifi.sta.password, sizeof(wifi.sta.password));
 
-    char ssid[96], host[192], qq[192], gmail[192], quota_url[288];
+    char ssid[96], host[192], qq[192], gmail[192], quota_url[288], reset_url[288];
     html_escape((const char *)wifi.sta.ssid, ssid, sizeof(ssid));
     html_escape(config.bridge_host, host, sizeof(host));
     html_escape(config.qq_email, qq, sizeof(qq));
     html_escape(config.gmail_email, gmail, sizeof(gmail));
     html_escape(config.sub2api_url, quota_url, sizeof(quota_url));
+    html_escape(config.sub2api_reset_url, reset_url, sizeof(reset_url));
 
     const size_t page_capacity = 16384;
     char *page = malloc(page_capacity);
@@ -153,11 +154,12 @@ static esp_err_t config_page_handler(httpd_req_t *request)
         "<label>Gmail 地址<input name='gmail_email' type='email' value='%s' maxlength='127' placeholder='name@gmail.com'></label>"
         "<label>Gmail 应用专用密码<input name='gmail_app_password' type='password' maxlength='127' autocomplete='new-password' placeholder='已配置可留空'></label>"
         "</section><section><h2>4 · Sub2API 额度</h2><p class='section-note'>填写额度接口地址和访问 Token，设备会定期读取 Codex 使用情况。</p>"
-        "<label>额度接口 URL<input name='sub2api_url' type='url' value='%s' maxlength='191' placeholder='https://example.com/api/quota'></label>"
+        "<label>额度/使用量接口 URL<input name='sub2api_url' type='url' value='%s' maxlength='191' placeholder='粘贴实际的额度接口 URL'></label>"
+        "<label>重置卡接口 URL<input name='sub2api_reset_url' type='url' value='%s' maxlength='191' placeholder='粘贴实际的重置卡接口 URL'></label>"
         "<label>Bearer Token<input name='sub2api_token' type='password' maxlength='255' autocomplete='new-password' placeholder='已配置可留空'></label>"
         "</section><div class='actions'><button type='submit'>保存全部设置并重启</button><p class='hint'>所有配置在一次提交中保存。敏感字段不会回显，留空表示保留已保存值。</p></div></form>"
         "<p class='hint'>操作：连接热点 <code>CODEX-DIAL-SETUP</code>（密码 <code>codexsetup</code>），打开 <code>http://192.168.4.1/settings</code>。</p></main></html>",
-        ssid, host, config.bridge_port, qq, gmail, quota_url);
+        ssid, host, config.bridge_port, qq, gmail, quota_url, reset_url);
     esp_err_t result = send_text(request, "text/html; charset=utf-8", page, true);
     free(page);
     return result;
@@ -200,6 +202,7 @@ static esp_err_t save_handler(httpd_req_t *request)
     if (form_value(body, "gmail_email", value, sizeof(value))) copy_text(config.gmail_email, sizeof(config.gmail_email), value);
     if (form_value(body, "gmail_app_password", value, sizeof(value)) && value[0]) copy_text(config.gmail_app_password, sizeof(config.gmail_app_password), value);
     if (form_value(body, "sub2api_url", value, sizeof(value))) copy_text(config.sub2api_url, sizeof(config.sub2api_url), value);
+    if (form_value(body, "sub2api_reset_url", value, sizeof(value))) copy_text(config.sub2api_reset_url, sizeof(config.sub2api_reset_url), value);
     if (form_value(body, "sub2api_token", value, sizeof(value)) && value[0]) copy_text(config.sub2api_token, sizeof(config.sub2api_token), value);
     if (form_value(body, "bridge_port", value, sizeof(value))) {
         const unsigned long port = strtoul(value, NULL, 10);
@@ -221,7 +224,7 @@ static esp_err_t save_handler(httpd_req_t *request)
     if (device_config_save(&config) != ESP_OK || esp_wifi_set_config(WIFI_IF_STA, &wifi) != ESP_OK) {
         return send_text(request, "text/plain; charset=utf-8", "保存失败，请重试", false);
     }
-    const char *response = "<!doctype html><meta charset='utf-8'><meta name='viewport' content='width=device-width'><body style='font:18px system-ui;padding:28px;background:#101612;color:#f4f3ec'><h2 style='color:#c4ed72'>设置已保存</h2><p>Wi‑Fi、Bridge、邮箱和 Sub2API 参数已写入设备。设备将在几秒后重启，请等待它连接家庭 Wi‑Fi。</p></body>";
+    const char *response = "<!doctype html><meta charset='utf-8'><meta name='viewport' content='width=device-width'><body style='font:18px system-ui;padding:28px;background:#101612;color:#f4f3ec'><h2 style='color:#c4ed72'>设置已保存</h2><p>Wi‑Fi、Bridge、邮箱、额度接口和重置卡接口参数已写入设备。设备将在几秒后重启，请等待它连接家庭 Wi‑Fi。</p></body>";
     httpd_resp_set_type(request, "text/html; charset=utf-8");
     httpd_resp_send(request, response, HTTPD_RESP_USE_STRLEN);
     xTaskCreate(restart_task, "config_restart", 2048, NULL, 2, NULL);

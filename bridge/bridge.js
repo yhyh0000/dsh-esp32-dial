@@ -31,7 +31,7 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { CodexAppServer } from "./codex-backend.js";
-import { normalizeQuotaResponse } from "./companion-adapter.js";
+import { mergeQuotaResponses, normalizeQuotaResponse } from "./companion-adapter.js";
 import { fetchMailAccount } from "./mail-adapter.js";
 
 // ─────────────────────────────────────────────────────────────── configuration
@@ -53,6 +53,7 @@ const CONFIG = {
 	doneHoldMs: 4000,
 	/** Optional Sub2API fallback; board configuration is preferred. */
 	sub2apiQuotaUrl: process.env.SUB2API_QUOTA_URL ?? "",
+	sub2apiResetUrl: process.env.SUB2API_RESET_URL ?? "",
 	sub2apiAuthToken: process.env.SUB2API_AUTH_TOKEN ?? "",
 	companionPollMs: Number(process.env.COMPANION_POLL_MS ?? 60000),
 };
@@ -598,7 +599,7 @@ function normalizeDeviceConfig(value) {
 			qq: { email: textOrEmpty(qq.email), appPassword: textOrEmpty(qq.appPassword) },
 			gmail: { email: textOrEmpty(gmail.email), appPassword: textOrEmpty(gmail.appPassword) },
 		},
-		sub2api: { url: textOrEmpty(sub2api.url), token: textOrEmpty(sub2api.token) },
+		sub2api: { url: textOrEmpty(sub2api.url), resetUrl: textOrEmpty(sub2api.resetUrl), token: textOrEmpty(sub2api.token) },
 	};
 }
 
@@ -608,7 +609,7 @@ function activeServiceConfig() {
 		if (!device.serviceConfig) continue;
 		first ??= device.serviceConfig;
 		const { mail, sub2api } = device.serviceConfig;
-		if (mail?.qq?.email || mail?.gmail?.email || sub2api?.url) return device.serviceConfig;
+		if (mail?.qq?.email || mail?.gmail?.email || sub2api?.url || sub2api?.resetUrl) return device.serviceConfig;
 	}
 	return first;
 }
@@ -681,19 +682,34 @@ async function refreshSub2ApiQuota() {
 	if (quotaRefreshPromise) return quotaRefreshPromise;
 	const serviceConfig = activeServiceConfig();
 	const quotaUrl = serviceConfig?.sub2api?.url || CONFIG.sub2apiQuotaUrl;
+	const resetUrl = serviceConfig?.sub2api?.resetUrl || CONFIG.sub2apiResetUrl;
 	const authToken = serviceConfig?.sub2api?.token || CONFIG.sub2apiAuthToken;
-	if (!quotaUrl) return null;
+	const endpoints = [
+		{ kind: "usage", url: quotaUrl, method: "GET" },
+		{ kind: "reset", url: resetUrl, method: "POST" },
+	].filter((endpoint) => endpoint.url);
+	if (endpoints.length === 0) return null;
 	quotaRefreshPromise = (async () => {
 		const controller = new AbortController();
 		const timeout = setTimeout(() => controller.abort(), 8000);
 		try {
 			const headers = { accept: "application/json" };
 			if (authToken) headers.authorization = `Bearer ${authToken}`;
-			const response = await fetch(quotaUrl, { headers, signal: controller.signal });
-			if (!response.ok) throw new Error(`Sub2API HTTP ${response.status}`);
-			const quota = normalizeQuotaResponse(await response.json());
+			const results = await Promise.allSettled(endpoints.map(async (endpoint) => {
+				const response = await fetch(endpoint.url, { method: endpoint.method, headers, signal: controller.signal });
+				if (!response.ok) throw new Error(`${endpoint.kind} HTTP ${response.status}`);
+				return normalizeQuotaResponse(await response.json());
+			}));
+			const successful = results.filter((result) => result.status === "fulfilled");
+			if (successful.length === 0) {
+				const details = results.map((result) => result.status === "rejected" ? result.reason?.message : "unknown error").join("; ");
+				throw new Error(details || "no Sub2API response");
+			}
+			const quota = successful.map((result) => result.value).reduce((merged, next) => mergeQuotaResponses(merged, next), null);
 			publishCompanion({ quota });
-			log(`Sub2API quota → ${quota.status} | 5h ${quota.windows.fiveHour.remainingPercent ?? "?"}% | 7d ${quota.windows.sevenDay.remainingPercent ?? "?"}%`);
+			const failed = results.filter((result) => result.status === "rejected");
+			if (failed.length > 0) log(`WARN Sub2API partial response (${failed.length}/${results.length} endpoint failed)`);
+			log(`Sub2API quota → ${quota.status} | 5h ${quota.windows.fiveHour.remainingPercent ?? "?"}% | 7d ${quota.windows.sevenDay.remainingPercent ?? "?"}% | reset cards ${quota.resetCards.availableCount}`);
 		} catch (error) {
 			const quota = { ...companionState.quota, status: "offline" };
 			companionState = { ...companionState, quota };
@@ -867,7 +883,7 @@ async function onDeviceFrame(device, text) {
 
 		case "config":
 			device.serviceConfig = normalizeDeviceConfig(frame.config ?? frame);
-			log(`device service config updated: qq=${Boolean(device.serviceConfig.mail.qq.email && device.serviceConfig.mail.qq.appPassword)} gmail=${Boolean(device.serviceConfig.mail.gmail.email && device.serviceConfig.mail.gmail.appPassword)} sub2api=${Boolean(device.serviceConfig.sub2api.url)}`);
+			log(`device service config updated: qq=${Boolean(device.serviceConfig.mail.qq.email && device.serviceConfig.mail.qq.appPassword)} gmail=${Boolean(device.serviceConfig.mail.gmail.email && device.serviceConfig.mail.gmail.appPassword)} sub2api=${Boolean(device.serviceConfig.sub2api.url || device.serviceConfig.sub2api.resetUrl)}`);
 			void refreshSub2ApiQuota();
 			void refreshMail();
 			break;
@@ -1434,7 +1450,7 @@ function startBridge() {
 	}
 	setInterval(() => { void refreshSub2ApiQuota(); }, Math.max(15000, CONFIG.companionPollMs));
 	setInterval(() => { void refreshMail(); }, Math.max(30000, CONFIG.companionPollMs));
-	if (CONFIG.sub2apiQuotaUrl) log("Sub2API quota polling enabled from environment");
+	if (CONFIG.sub2apiQuotaUrl || CONFIG.sub2apiResetUrl) log("Sub2API quota polling enabled from environment");
 }
 
 // If run as a script (node bridge.js), start the server.

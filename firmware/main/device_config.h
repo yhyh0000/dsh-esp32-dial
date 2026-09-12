@@ -26,6 +26,7 @@ typedef struct {
     char gmail_email[DEVICE_CONFIG_EMAIL_LEN];
     char gmail_app_password[DEVICE_CONFIG_PASSWORD_LEN];
     char sub2api_url[DEVICE_CONFIG_URL_LEN];
+    char sub2api_reset_url[DEVICE_CONFIG_URL_LEN];
     char sub2api_token[DEVICE_CONFIG_SUB2API_TOKEN_LEN];
 } device_service_config_t;
 

@@ -38,7 +38,10 @@
 #define DSH_DEFAULT_GMAIL_APP_PASSWORD ""
 #endif
 #ifndef DSH_DEFAULT_SUB2API_URL
-#define DSH_DEFAULT_SUB2API_URL ""
+#define DSH_DEFAULT_SUB2API_URL "https://api.suhm.top/api/v1/admin/accounts/1/usage?source=active&force=true&timezone=Asia%2FShanghai"
+#endif
+#ifndef DSH_DEFAULT_SUB2API_RESET_URL
+#define DSH_DEFAULT_SUB2API_RESET_URL "https://api.suhm.top/api/v1/admin/openai/accounts/1/quota/refresh"
 #endif
 #ifndef DSH_DEFAULT_SUB2API_TOKEN
 #define DSH_DEFAULT_SUB2API_TOKEN ""
@@ -74,6 +77,7 @@ static void apply_service_defaults(device_service_config_t *config)
     copy_default(config->gmail_email, sizeof(config->gmail_email), DSH_DEFAULT_GMAIL_EMAIL);
     copy_default(config->gmail_app_password, sizeof(config->gmail_app_password), DSH_DEFAULT_GMAIL_APP_PASSWORD);
     copy_default(config->sub2api_url, sizeof(config->sub2api_url), DSH_DEFAULT_SUB2API_URL);
+    copy_default(config->sub2api_reset_url, sizeof(config->sub2api_reset_url), DSH_DEFAULT_SUB2API_RESET_URL);
     copy_default(config->sub2api_token, sizeof(config->sub2api_token), DSH_DEFAULT_SUB2API_TOKEN);
 }
 
@@ -98,6 +102,7 @@ bool device_config_load(device_service_config_t *config)
     read_string(handle, "gmail_email", config->gmail_email, sizeof(config->gmail_email));
     read_string(handle, "gmail_app_pw", config->gmail_app_password, sizeof(config->gmail_app_password));
     read_string(handle, "sub2api_url", config->sub2api_url, sizeof(config->sub2api_url));
+    read_string(handle, "sub2api_reset_url", config->sub2api_reset_url, sizeof(config->sub2api_reset_url));
     read_string(handle, "sub2api_token", config->sub2api_token, sizeof(config->sub2api_token));
     nvs_close(handle);
     apply_service_defaults(config);
@@ -126,6 +131,7 @@ esp_err_t device_config_save(const device_service_config_t *config)
     if (err == ESP_OK) err = nvs_set_str(handle, "gmail_email", config->gmail_email);
     if (err == ESP_OK) err = nvs_set_str(handle, "gmail_app_pw", config->gmail_app_password);
     if (err == ESP_OK) err = nvs_set_str(handle, "sub2api_url", config->sub2api_url);
+    if (err == ESP_OK) err = nvs_set_str(handle, "sub2api_reset_url", config->sub2api_reset_url);
     if (err == ESP_OK) err = nvs_set_str(handle, "sub2api_token", config->sub2api_token);
     if (err == ESP_OK) err = nvs_commit(handle);
     nvs_close(handle);

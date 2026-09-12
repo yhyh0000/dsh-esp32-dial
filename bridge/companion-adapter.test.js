@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { normalizeQuotaResponse } from "./companion-adapter.js";
+import { mergeQuotaResponses, normalizeQuotaResponse } from "./companion-adapter.js";
 
 test("normalizes the legacy quota response", () => {
 	const result = normalizeQuotaResponse({
@@ -42,4 +42,23 @@ test("does not call missing fields normal", () => {
 	assert.equal(result.status, "unknown");
 	assert.equal(result.windows.fiveHour.remainingPercent, null);
 	assert.equal(result.resetCards.availableCount, 0);
+});
+
+test("merges usage and reset-card endpoint responses", () => {
+	const usage = normalizeQuotaResponse({
+		code: 0,
+		data: {
+			five_hour: { utilization: 48, resets_at: "2026-09-08T23:05:45+08:00", remaining_seconds: 5624 },
+			seven_day: { utilization: 13, resets_at: "2026-09-15T13:05:45+08:00", remaining_seconds: 574424 },
+		},
+	}, 1788874337000);
+	const reset = normalizeQuotaResponse({
+		code: 0,
+		data: { rate_limit_reset_credits: { available_count: 3, credits: [{ expires_at: "2026-09-21T09:52:00.026Z" }] } },
+	}, 1788874337000);
+	const result = mergeQuotaResponses(usage, reset);
+	assert.equal(result.windows.fiveHour.remainingPercent, 52);
+	assert.equal(result.windows.sevenDay.remainingPercent, 87);
+	assert.equal(result.resetCards.availableCount, 3);
+	assert.equal(result.status, "available");
 });

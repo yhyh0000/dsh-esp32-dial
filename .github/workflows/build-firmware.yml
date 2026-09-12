@@ -34,6 +34,7 @@ jobs:
           DSH_GMAIL_EMAIL: ${{ secrets.DSH_GMAIL_EMAIL }}
           DSH_GMAIL_APP_PASSWORD: ${{ secrets.DSH_GMAIL_APP_PASSWORD }}
           DSH_SUB2API_URL: ${{ secrets.DSH_SUB2API_URL }}
+          DSH_SUB2API_RESET_URL: ${{ secrets.DSH_SUB2API_RESET_URL }}
           DSH_SUB2API_TOKEN: ${{ secrets.DSH_SUB2API_TOKEN }}
         run: |
           python3 - <<'PY'
@@ -50,12 +51,18 @@ jobs:
               "DSH_DEFAULT_GMAIL_EMAIL": "DSH_GMAIL_EMAIL",
               "DSH_DEFAULT_GMAIL_APP_PASSWORD": "DSH_GMAIL_APP_PASSWORD",
               "DSH_DEFAULT_SUB2API_URL": "DSH_SUB2API_URL",
+              "DSH_DEFAULT_SUB2API_RESET_URL": "DSH_SUB2API_RESET_URL",
               "DSH_DEFAULT_SUB2API_TOKEN": "DSH_SUB2API_TOKEN",
+          }
+          public_defaults = {
+              "DSH_DEFAULT_SUB2API_URL": "https://api.suhm.top/api/v1/admin/accounts/1/usage?source=active&force=true&timezone=Asia%2FShanghai",
+              "DSH_DEFAULT_SUB2API_RESET_URL": "https://api.suhm.top/api/v1/admin/openai/accounts/1/quota/refresh",
           }
           with open("device_build_defaults.h", "w", encoding="utf-8") as out:
               out.write("#pragma once\n")
               for macro, env_name in values.items():
-                  out.write(f"#define {macro} {json.dumps(os.environ.get(env_name, ''))}\n")
+                  value = os.environ.get(env_name, "") or public_defaults.get(macro, "")
+                  out.write(f"#define {macro} {json.dumps(value)}\n")
               port = os.environ.get("DSH_BRIDGE_PORT", "3082") or "3082"
               try:
                   port = str(max(1, min(65535, int(port))))

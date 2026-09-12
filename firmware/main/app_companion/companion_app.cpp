@@ -193,6 +193,7 @@ void CompanionApp::sendDeviceConfig()
     cJSON_AddStringToObject(gmail, "email", config.gmail_email);
     cJSON_AddStringToObject(gmail, "appPassword", config.gmail_app_password);
     cJSON_AddStringToObject(sub2api, "url", config.sub2api_url);
+    cJSON_AddStringToObject(sub2api, "resetUrl", config.sub2api_reset_url);
     cJSON_AddStringToObject(sub2api, "token", config.sub2api_token);
     char *text = cJSON_PrintUnformatted(root);
     if (text) {

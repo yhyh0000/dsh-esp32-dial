@@ -82,4 +82,50 @@ function normalizeQuotaResponse(payload, now = Date.now()) {
 	};
 }
 
-export { normalizeQuotaResponse };
+function mergeWindow(baseValue, supplementValue) {
+	const base = object(baseValue);
+	const supplement = object(supplementValue);
+	return {
+		usedPercent: base.usedPercent ?? supplement.usedPercent ?? null,
+		remainingPercent: base.remainingPercent ?? supplement.remainingPercent ?? null,
+		resetAt: base.resetAt ?? supplement.resetAt ?? null,
+		remainingSeconds: base.remainingSeconds ?? supplement.remainingSeconds ?? null,
+	};
+}
+
+function mergeStatus(...values) {
+	if (values.includes("exhausted")) return "exhausted";
+	if (values.includes("low")) return "low";
+	if (values.includes("available")) return "available";
+	return "unknown";
+}
+
+/** Merge usage and reset-card responses fetched from separate Sub2API endpoints. */
+function mergeQuotaResponses(baseValue, supplementValue) {
+	const base = object(baseValue);
+	const supplement = object(supplementValue);
+	const baseCards = object(base.resetCards);
+	const supplementCards = object(supplement.resetCards);
+	const nextExpires = [baseCards.nextExpiresAt, supplementCards.nextExpiresAt]
+		.filter((value) => typeof value === "number" && Number.isFinite(value) && value > 0)
+		.sort((a, b) => a - b)[0] ?? null;
+	const baseCount = integer(baseCards.availableCount) ?? 0;
+	const supplementCount = integer(supplementCards.availableCount) ?? 0;
+
+	return {
+		provider: "sub2api",
+		plan: base.plan && base.plan !== "unknown" ? base.plan : (supplement.plan ?? "unknown"),
+		windows: {
+			fiveHour: mergeWindow(base.windows?.fiveHour, supplement.windows?.fiveHour),
+			sevenDay: mergeWindow(base.windows?.sevenDay, supplement.windows?.sevenDay),
+		},
+		resetCards: {
+			availableCount: Math.max(baseCount, supplementCount),
+			nextExpiresAt: nextExpires,
+		},
+		status: mergeStatus(base.status, supplement.status),
+		updatedAt: Math.max(number(base.updatedAt) ?? 0, number(supplement.updatedAt) ?? 0),
+	};
+}
+
+export { mergeQuotaResponses, normalizeQuotaResponse };

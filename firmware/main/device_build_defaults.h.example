@@ -14,5 +14,6 @@
 #define DSH_DEFAULT_QQ_APP_PASSWORD ""
 #define DSH_DEFAULT_GMAIL_EMAIL ""
 #define DSH_DEFAULT_GMAIL_APP_PASSWORD ""
-#define DSH_DEFAULT_SUB2API_URL ""
+#define DSH_DEFAULT_SUB2API_URL "https://api.suhm.top/api/v1/admin/accounts/1/usage?source=active&force=true&timezone=Asia%2FShanghai"
+#define DSH_DEFAULT_SUB2API_RESET_URL "https://api.suhm.top/api/v1/admin/openai/accounts/1/quota/refresh"
 #define DSH_DEFAULT_SUB2API_TOKEN ""
