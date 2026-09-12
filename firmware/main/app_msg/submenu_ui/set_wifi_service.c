@@ -5,6 +5,7 @@
 #include <stdlib.h>
 
 #include "freertos/event_groups.h"
+#include "freertos/task.h"
 #include "esp_log.h"
 #include "esp_wifi.h"
 #include "esp_netif.h"
@@ -24,6 +25,7 @@ static lv_obj_t *status_bar = NULL;
 static const char *TAG = "wifi_scan";
 static EventGroupHandle_t s_wifi_event_group;
 static void wifi_scan_ui_task(void *arg);
+static void wifi_init_sta_task(void *arg);
 static bool s_wifi_initialized = false;
 static bool s_wifi_ready = false;
 static bool s_force_setup_mode = false;
@@ -412,6 +414,16 @@ void wifi_init_sta(void)
 {
     if (s_wifi_initialized) return;
     s_wifi_initialized = true;
+    if (xTaskCreate(wifi_init_sta_task, "wifi_init", 8192, NULL, 5, NULL) != pdPASS) {
+        s_wifi_initialized = false;
+        ESP_LOGE(TAG, "Failed to create Wi-Fi initialization task");
+    }
+}
+
+/* Wi-Fi/Netif startup uses more stack than the ESP-IDF main task provides. */
+static void wifi_init_sta_task(void *arg)
+{
+    (void)arg;
     s_wifi_event_group = xEventGroupCreate();
 
     esp_err_t err = esp_netif_init();
@@ -463,6 +475,7 @@ void wifi_init_sta(void)
              s_has_saved_ssid ? "yes" : "no", has_new_service_config ? "yes" : "no");
 
     xTaskCreate(wifi_scan_ui_task, "wifi_scan_ui_task", 4096, NULL, 5, NULL);
+    vTaskDelete(NULL);
 }
 
 /* ===================== WiFi 扫描 ===================== */
