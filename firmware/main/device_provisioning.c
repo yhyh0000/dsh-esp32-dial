@@ -127,35 +127,36 @@ static esp_err_t config_page_handler(httpd_req_t *request)
     html_escape(config.gmail_email, gmail, sizeof(gmail));
     html_escape(config.sub2api_url, quota_url, sizeof(quota_url));
 
-    const size_t page_capacity = 12288;
+    const size_t page_capacity = 16384;
     char *page = malloc(page_capacity);
     if (!page) return send_text(request, "text/plain; charset=utf-8", "内存不足，请重试", false);
     snprintf(page, page_capacity,
         "<!doctype html><html lang='zh-CN'><meta name='viewport' content='width=device-width,initial-scale=1'>"
-        "<title>Codex Dial 配置</title><style>"
+        "<title>Codex Dial 设备设置</title><style>"
         "*{box-sizing:border-box}body{margin:0;background:#101612;color:#f4f3ec;font:15px system-ui,-apple-system,Segoe UI,sans-serif}"
-        "main{max-width:680px;margin:0 auto;padding:28px 18px 44px}h1{font-size:25px;margin:0 0 6px}h2{font-size:16px;margin:26px 0 10px;color:#c4ed72}p{color:#a1aaa1;line-height:1.55}"
-        "section{border-top:1px solid #2b352e;padding-top:4px}label{display:block;margin:13px 0 5px;color:#dbe3d7}input{width:100%%;padding:12px;border:1px solid #3a463d;border-radius:7px;background:#18221c;color:#fff;font-size:16px}"
-        ".row{display:grid;grid-template-columns:1fr 130px;gap:10px}.hint{font-size:13px;color:#7f8e82}button{margin-top:28px;width:100%%;padding:13px;border:0;border-radius:7px;background:#c4ed72;color:#15200f;font-weight:700;font-size:16px}"
-        "code{color:#c4ed72}@media(max-width:480px){.row{grid-template-columns:1fr 100px}}"
-        "</style><main><h1>Codex Dial 配置</h1><p>连接到本设备热点后填写。保存后设备会重启并连接目标 Wi‑Fi。密码留空表示保留已保存值。</p>"
-        "<form method='post' action='/save'><section><h2>1 · Wi‑Fi</h2>"
+        "main{max-width:720px;margin:0 auto;padding:24px 18px 42px}header{padding:8px 0 18px}h1{font-size:27px;letter-spacing:.2px;margin:0 0 7px}h2{font-size:16px;margin:0 0 12px;color:#c4ed72}p{color:#a1aaa1;line-height:1.55;margin:7px 0}"
+        ".eyebrow{color:#87988a;font-size:11px;font-weight:700;letter-spacing:1.5px}.status{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin:14px 0 6px}.status-item{border:1px solid #2b352e;border-radius:8px;background:#151d18;padding:10px 12px}.status-item span{display:block;color:#87988a;font-size:12px;margin-bottom:4px}.status-item b{font-size:14px;font-weight:600}"
+        "form{display:block}section{border-top:1px solid #2b352e;padding:20px 0 4px}label{display:block;margin:13px 0 5px;color:#dbe3d7}input{width:100%%;padding:12px;border:1px solid #3a463d;border-radius:7px;background:#18221c;color:#fff;font-size:16px}input:focus{outline:2px solid #789e48;outline-offset:1px;border-color:#c4ed72}"
+        ".row{display:grid;grid-template-columns:1fr 130px;gap:10px}.hint{font-size:13px;color:#7f8e82}.section-note{font-size:13px;margin:-2px 0 8px}.actions{padding-top:18px}button{width:100%%;padding:14px;border:0;border-radius:7px;background:#c4ed72;color:#15200f;font-weight:700;font-size:16px;cursor:pointer}"
+        "code{color:#c4ed72}a{color:#c4ed72}@media(max-width:480px){.row{grid-template-columns:1fr 100px}.status{grid-template-columns:1fr}main{padding-left:15px;padding-right:15px}}"
+        "</style><main><header><div class='eyebrow'>CODEX DIAL / DEVICE SETUP</div><h1>设备设置</h1><p>在这个页面一次完成配网和所有服务参数配置。保存后设备会自动重启并连接目标 Wi‑Fi。</p><div class='status'><div class='status-item'><span>配置热点</span><b><code>CODEX-DIAL-SETUP</code></b></div><div class='status-item'><span>配置地址</span><b><code>192.168.4.1</code></b></div></div></header>"
+        "<form method='post' action='/save' autocomplete='off'><section><h2>1 · 网络连接</h2>"
         "<label>Wi‑Fi 名称<input name='wifi_ssid' value='%s' maxlength='32' required></label>"
-        "<label>Wi‑Fi 密码<input name='wifi_password' type='password' maxlength='64' placeholder='首次配置必填'></label>"
-        "</section><section><h2>2 · Codex Bridge</h2>"
+        "<label>Wi‑Fi 密码<input name='wifi_password' type='password' maxlength='64' autocomplete='new-password' placeholder='首次配置必填；已配置可留空'></label>"
+        "</section><section><h2>2 · Codex Bridge</h2><p class='section-note'>用于语音记录、指令和设备状态通信；不使用时可留空。</p>"
         "<div class='row'><label>Bridge 主机/IP<input name='bridge_host' value='%s' maxlength='95' placeholder='例如 192.168.1.10'></label>"
         "<label>端口<input name='bridge_port' type='number' value='%u' min='1' max='65535'></label></div>"
-        "<label>设备 Token<input name='bridge_token' type='password' maxlength='127' placeholder='从 bridge 首次启动日志获取'></label>"
-        "</section><section><h2>3 · 邮箱授权</h2><p class='hint'>QQ 使用邮箱设置里的 IMAP 授权码；Gmail 使用应用专用密码。授权信息只保存在设备配置区。</p>"
+        "<label>设备 Token<input name='bridge_token' type='password' maxlength='127' autocomplete='new-password' placeholder='从 bridge 首次启动日志获取；已配置可留空'></label>"
+        "</section><section><h2>3 · 邮箱读取</h2><p class='section-note'>QQ 使用邮箱设置里的 IMAP 授权码；Gmail 使用应用专用密码。授权信息只保存在设备配置区。</p>"
         "<label>QQ 邮箱<input name='qq_email' type='email' value='%s' maxlength='127' placeholder='name@qq.com'></label>"
-        "<label>QQ IMAP 授权码<input name='qq_app_password' type='password' maxlength='127'></label>"
+        "<label>QQ IMAP 授权码<input name='qq_app_password' type='password' maxlength='127' autocomplete='new-password' placeholder='已配置可留空'></label>"
         "<label>Gmail 地址<input name='gmail_email' type='email' value='%s' maxlength='127' placeholder='name@gmail.com'></label>"
-        "<label>Gmail 应用专用密码<input name='gmail_app_password' type='password' maxlength='127'></label>"
-        "</section><section><h2>4 · Sub2API</h2>"
+        "<label>Gmail 应用专用密码<input name='gmail_app_password' type='password' maxlength='127' autocomplete='new-password' placeholder='已配置可留空'></label>"
+        "</section><section><h2>4 · Sub2API 额度</h2><p class='section-note'>填写额度接口地址和访问 Token，设备会定期读取 Codex 使用情况。</p>"
         "<label>额度接口 URL<input name='sub2api_url' type='url' value='%s' maxlength='191' placeholder='https://example.com/api/quota'></label>"
-        "<label>Bearer Token<input name='sub2api_token' type='password' maxlength='255'></label>"
-        "</section><button type='submit'>保存配置并重启</button></form>"
-        "<p class='hint'>热点：<code>CODEX-DIAL-SETUP</code> · 密码：<code>codexsetup</code> · 地址：<code>192.168.4.1</code></p></main></html>",
+        "<label>Bearer Token<input name='sub2api_token' type='password' maxlength='255' autocomplete='new-password' placeholder='已配置可留空'></label>"
+        "</section><div class='actions'><button type='submit'>保存全部设置并重启</button><p class='hint'>所有配置在一次提交中保存。敏感字段不会回显，留空表示保留已保存值。</p></div></form>"
+        "<p class='hint'>操作：连接热点 <code>CODEX-DIAL-SETUP</code>（密码 <code>codexsetup</code>），打开 <code>http://192.168.4.1/settings</code>。</p></main></html>",
         ssid, host, config.bridge_port, qq, gmail, quota_url);
     esp_err_t result = send_text(request, "text/html; charset=utf-8", page, true);
     free(page);
@@ -220,7 +221,7 @@ static esp_err_t save_handler(httpd_req_t *request)
     if (device_config_save(&config) != ESP_OK || esp_wifi_set_config(WIFI_IF_STA, &wifi) != ESP_OK) {
         return send_text(request, "text/plain; charset=utf-8", "保存失败，请重试", false);
     }
-    const char *response = "<!doctype html><meta charset='utf-8'><meta name='viewport' content='width=device-width'><body style='font:18px system-ui;padding:28px;background:#101612;color:#f4f3ec'><h2>已保存</h2><p>设备将在几秒后重启。请让手机回到家庭 Wi‑Fi，再从路由器或串口查看设备 IP，访问同一个地址修改配置。</p></body>";
+    const char *response = "<!doctype html><meta charset='utf-8'><meta name='viewport' content='width=device-width'><body style='font:18px system-ui;padding:28px;background:#101612;color:#f4f3ec'><h2 style='color:#c4ed72'>设置已保存</h2><p>Wi‑Fi、Bridge、邮箱和 Sub2API 参数已写入设备。设备将在几秒后重启，请等待它连接家庭 Wi‑Fi。</p></body>";
     httpd_resp_set_type(request, "text/html; charset=utf-8");
     httpd_resp_send(request, response, HTTPD_RESP_USE_STRLEN);
     xTaskCreate(restart_task, "config_restart", 2048, NULL, 2, NULL);
@@ -238,7 +239,7 @@ static esp_err_t status_handler(httpd_req_t *request)
             snprintf(ip, sizeof(ip), IPSTR, IP2STR(&info.ip));
         }
     }
-    snprintf(body, sizeof(body), "{\"ap\":%s,\"url\":\"http://192.168.4.1/\",\"staIp\":\"%s\"}", s_ap_active ? "true" : "false", ip);
+    snprintf(body, sizeof(body), "{\"ap\":%s,\"url\":\"http://192.168.4.1/settings\",\"staIp\":\"%s\"}", s_ap_active ? "true" : "false", ip);
     return send_text(request, "application/json", body, true);
 }
 
@@ -254,9 +255,13 @@ void device_provisioning_start_http(void)
         return;
     }
     const httpd_uri_t root = {.uri = "/", .method = HTTP_GET, .handler = config_page_handler, .user_ctx = NULL};
+    const httpd_uri_t settings = {.uri = "/settings", .method = HTTP_GET, .handler = config_page_handler, .user_ctx = NULL};
+    const httpd_uri_t config_page = {.uri = "/config", .method = HTTP_GET, .handler = config_page_handler, .user_ctx = NULL};
     const httpd_uri_t save = {.uri = "/save", .method = HTTP_POST, .handler = save_handler, .user_ctx = NULL};
     const httpd_uri_t status = {.uri = "/api/status", .method = HTTP_GET, .handler = status_handler, .user_ctx = NULL};
     httpd_register_uri_handler(s_http_server, &root);
+    httpd_register_uri_handler(s_http_server, &settings);
+    httpd_register_uri_handler(s_http_server, &config_page);
     httpd_register_uri_handler(s_http_server, &save);
     httpd_register_uri_handler(s_http_server, &status);
     ESP_LOGI(TAG, "configuration page ready on port 80");
@@ -276,7 +281,7 @@ void device_provisioning_start_ap(void)
         return;
     }
     s_ap_active = true;
-    ESP_LOGW(TAG, "setup mode: connect to %s / %s, then open http://192.168.4.1/", ap.ap.ssid, ap.ap.password);
+    ESP_LOGW(TAG, "setup mode: connect to %s / %s, then open http://192.168.4.1/settings", ap.ap.ssid, ap.ap.password);
 }
 
 bool device_provisioning_ap_active(void)
