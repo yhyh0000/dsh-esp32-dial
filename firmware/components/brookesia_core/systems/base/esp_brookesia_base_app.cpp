@@ -87,7 +87,8 @@ bool App::startRecordResource(void)
         _display_style.h = disp->ver_res;
         disp->hor_res = visual_area.x2 - visual_area.x1 + 1;
         disp->ver_res = visual_area.y2 - visual_area.y1 + 1;
-        if (rotation == LV_DISP_ROTATION_90 || rotation == LV_DISP_ROTATION_270) {
+        // LVGL 9 renamed LV_DISP_ROTATION_* to LV_DISPLAY_ROTATION_*.
+        if (rotation == LV_DISPLAY_ROTATION_90 || rotation == LV_DISPLAY_ROTATION_270) {
             swap(disp->hor_res, disp->ver_res);
         }
     }
