@@ -33,6 +33,7 @@ import { fileURLToPath } from "node:url";
 import { CodexAppServer } from "./codex-backend.js";
 import { mergeQuotaResponses, normalizeQuotaResponse } from "./companion-adapter.js";
 import { fetchMailAccount } from "./mail-adapter.js";
+import { GatewayClient } from "./gateway-client.js";
 
 // ─────────────────────────────────────────────────────────────── configuration
 
@@ -56,6 +57,14 @@ const CONFIG = {
 	sub2apiResetUrl: process.env.SUB2API_RESET_URL ?? "",
 	sub2apiAuthToken: process.env.SUB2API_AUTH_TOKEN ?? "",
 	companionPollMs: Number(process.env.COMPANION_POLL_MS ?? 60000),
+	/** Gateway control-plane is optional; unset values retain LAN-only behavior. */
+	gateway: {
+		baseUrl: process.env.AG_GATEWAY_URL ?? "",
+		token: process.env.AG_GATEWAY_TOKEN ?? "",
+		tenantId: process.env.AG_TENANT_ID ?? "personal",
+		hostId: process.env.AG_HOST_ID ?? "",
+		displayName: process.env.AG_HOST_NAME ?? "",
+	},
 };
 
 /**
@@ -623,6 +632,8 @@ let lastSnapshot;
 let dshOnline = false;
 let codexOnline = false;
 let codexBackend = null;
+let gatewayClient = null;
+let gatewayOnline = false;
 let companionState = {
 	t: "companion",
 	photo: { enabled: false, name: "", url: "" },
@@ -767,6 +778,39 @@ function broadcast(frame) {
 	for (const device of devices) send(device, frame);
 }
 
+function gatewaySessionFromDsh(item, state) {
+	const values = item?.projections?.values ?? {};
+	return {
+		id: String(item?.sessionId ?? "").replace(/^session-/, "session-").slice(0, 80),
+		agentType: "dsh",
+		title: String(values.title ?? "DeepSeek Harness").slice(0, 80),
+		state: String(state?.phase ?? "idle"),
+		canAcceptInput: false,
+		canApprove: true,
+	};
+}
+
+async function syncGateway(snapshot, state) {
+	if (!gatewayClient?.enabled) return;
+	try {
+		const items = Array.isArray(snapshot?.items) ? snapshot.items : [];
+		await gatewayClient.presence(true);
+		for (const item of items.slice(0, 20)) await gatewayClient.upsertSession(gatewaySessionFromDsh(item, state));
+		gatewayOnline = true;
+	} catch (error) {
+		if (gatewayOnline) log(`Gateway control plane down (${error.message})`);
+		gatewayOnline = false;
+	}
+}
+
+function startGatewayControlPlane() {
+	gatewayClient = new GatewayClient(CONFIG.gateway);
+	if (!gatewayClient.enabled) return;
+	void gatewayClient.register({ dsh: true, codex: CONFIG.backend === "codex", vscode: false, approvalRelay: true })
+		.then(() => { gatewayOnline = true; log(`Gateway control plane registered host ${CONFIG.gateway.hostId}`); })
+		.catch((error) => { gatewayOnline = false; log(`WARN Gateway registration failed (${error.message})`); });
+}
+
 /**
  * Poll DSH and publish a state frame when something a dial can see has changed.
  *
@@ -811,6 +855,7 @@ async function tick() {
 		next.clock !== lastState.clock;
 
 	lastState = next;
+	void syncGateway(snapshot, next);
 	if (next.phase !== "working") {
 		// Work stopped (idle/done/error/waiting): whatever the dial showed is
 		// over. Keeping the last tool calls would leave the next working burst
@@ -1306,6 +1351,8 @@ const server = createServer((req, res) => {
 			backend: CONFIG.backend,
 			dshOnline,
 			codexOnline,
+			gatewayOnline,
+			gatewayConfigured: Boolean(gatewayClient?.enabled),
 			devices: devices.size,
 			pendingAsks: pendingAsks.size,
 			companion: {
@@ -1441,6 +1488,7 @@ function startBridge() {
 		log(`status page: http://127.0.0.1:${CONFIG.listenPort}/status`);
 	});
 
+	startGatewayControlPlane();
 	if (CONFIG.backend === "codex") {
 		startCodexBackend();
 	} else {
