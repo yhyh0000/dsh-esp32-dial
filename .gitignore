@@ -22,3 +22,7 @@ bridge/state/device-token.txt
 
 # Firmware build-time defaults; generated from private local/GitHub secrets
 firmware/main/device_build_defaults.h
+
+# Gateway local registry and deployment credentials
+gateway/state/
+gateway/.env
