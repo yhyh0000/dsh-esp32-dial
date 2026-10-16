@@ -72,6 +72,7 @@ jobs:
           PY
 
       - name: Build ESP-IDF desktop
+        shell: bash
         working-directory: firmware
         run: |
           set -o pipefail
@@ -79,20 +80,26 @@ jobs:
           idf.py set-target esp32s3
           idf.py build 2>&1 | tee build.log
 
-      # Keep the complete ESP-IDF build directory and logs when compilation
-      # fails. This makes a cloud-only build diagnosable before attempting to
-      # download or flash a firmware image.
+      # The build container runs as root, while the artifact action runs on the
+      # outer runner. Copy the log to a runner-owned workspace path in an
+      # always() step so diagnostics survive an early idf.py failure.
+      - name: Collect ESP-IDF diagnostics
+        if: always()
+        shell: bash
+        run: |
+          mkdir -p diagnostics
+          if [ -f firmware/build.log ]; then cp firmware/build.log diagnostics/build.log; fi
+          if [ -f firmware/build/CMakeFiles/CMakeError.log ]; then cp firmware/build/CMakeFiles/CMakeError.log diagnostics/CMakeError.log; fi
+          if [ -f firmware/build/CMakeFiles/CMakeOutput.log ]; then cp firmware/build/CMakeFiles/CMakeOutput.log diagnostics/CMakeOutput.log; fi
+          if [ -f firmware/sdkconfig ]; then cp firmware/sdkconfig diagnostics/sdkconfig; fi
+          find diagnostics -maxdepth 1 -type f -printf '%f %s bytes\n' || true
+
       - name: Upload failed build diagnostics
         if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: codex-firmware-build-diagnostics
-          path: |
-            firmware/build.log
-            firmware/build/log/**
-            firmware/build/CMakeFiles/**
-            firmware/sdkconfig
-            firmware/managed_components/**/idf_component.yml
+          path: diagnostics/
           if-no-files-found: warn
           retention-days: 7
 
