@@ -7,6 +7,14 @@
  */
 #define DSH_DEFAULT_WIFI_SSID ""
 #define DSH_DEFAULT_WIFI_PASSWORD ""
+/* Remote Agent Satellite Gateway (Wi-Fi + TLS; no Bluetooth). */
+#define DSH_DEFAULT_GATEWAY_HOST ""
+#define DSH_DEFAULT_GATEWAY_PORT 8883
+#define DSH_DEFAULT_TENANT_ID "personal"
+#define DSH_DEFAULT_DEVICE_ID ""
+#define DSH_DEFAULT_DEVICE_CREDENTIAL ""
+
+/* Legacy LAN bridge migration only. New devices must use the gateway fields. */
 #define DSH_DEFAULT_BRIDGE_HOST ""
 #define DSH_DEFAULT_BRIDGE_PORT 3082
 #define DSH_DEFAULT_BRIDGE_TOKEN ""

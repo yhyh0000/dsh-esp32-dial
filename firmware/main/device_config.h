@@ -12,12 +12,24 @@ extern "C" {
 
 #define DEVICE_CONFIG_HOST_LEN 96
 #define DEVICE_CONFIG_TOKEN_LEN 128
+#define DEVICE_CONFIG_TENANT_LEN 64
+#define DEVICE_CONFIG_DEVICE_ID_LEN 80
 #define DEVICE_CONFIG_EMAIL_LEN 128
 #define DEVICE_CONFIG_PASSWORD_LEN 128
 #define DEVICE_CONFIG_URL_LEN 192
 #define DEVICE_CONFIG_SUB2API_TOKEN_LEN 256
 
 typedef struct {
+    /* Gateway identity is the only Agent routing credential stored on-device.
+     * A board never stores a DSH, Codex, email, or host-machine token. */
+    char gateway_host[DEVICE_CONFIG_HOST_LEN];
+    uint16_t gateway_port;
+    char tenant_id[DEVICE_CONFIG_TENANT_LEN];
+    char device_id[DEVICE_CONFIG_DEVICE_ID_LEN];
+    char device_credential[DEVICE_CONFIG_TOKEN_LEN];
+
+    /* Deprecated LAN bridge migration fields. Kept for a single release only;
+     * new provisioning pages do not expose them. */
     char bridge_host[DEVICE_CONFIG_HOST_LEN];
     uint16_t bridge_port;
     char bridge_token[DEVICE_CONFIG_TOKEN_LEN];

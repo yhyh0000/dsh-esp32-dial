@@ -16,6 +16,21 @@
 #ifndef DSH_DEFAULT_WIFI_PASSWORD
 #define DSH_DEFAULT_WIFI_PASSWORD ""
 #endif
+#ifndef DSH_DEFAULT_GATEWAY_HOST
+#define DSH_DEFAULT_GATEWAY_HOST ""
+#endif
+#ifndef DSH_DEFAULT_GATEWAY_PORT
+#define DSH_DEFAULT_GATEWAY_PORT 8883
+#endif
+#ifndef DSH_DEFAULT_TENANT_ID
+#define DSH_DEFAULT_TENANT_ID "personal"
+#endif
+#ifndef DSH_DEFAULT_DEVICE_ID
+#define DSH_DEFAULT_DEVICE_ID ""
+#endif
+#ifndef DSH_DEFAULT_DEVICE_CREDENTIAL
+#define DSH_DEFAULT_DEVICE_CREDENTIAL ""
+#endif
 #ifndef DSH_DEFAULT_BRIDGE_HOST
 #define DSH_DEFAULT_BRIDGE_HOST ""
 #endif
@@ -67,6 +82,13 @@ static void copy_default(char *out, size_t capacity, const char *value)
 
 static void apply_service_defaults(device_service_config_t *config)
 {
+    copy_default(config->gateway_host, sizeof(config->gateway_host), DSH_DEFAULT_GATEWAY_HOST);
+    if (config->gateway_port == 8883 && DSH_DEFAULT_GATEWAY_PORT > 0) {
+        config->gateway_port = (uint16_t)DSH_DEFAULT_GATEWAY_PORT;
+    }
+    copy_default(config->tenant_id, sizeof(config->tenant_id), DSH_DEFAULT_TENANT_ID);
+    copy_default(config->device_id, sizeof(config->device_id), DSH_DEFAULT_DEVICE_ID);
+    copy_default(config->device_credential, sizeof(config->device_credential), DSH_DEFAULT_DEVICE_CREDENTIAL);
     copy_default(config->bridge_host, sizeof(config->bridge_host), DSH_DEFAULT_BRIDGE_HOST);
     if (config->bridge_port == 3082 && DSH_DEFAULT_BRIDGE_PORT > 0) {
         config->bridge_port = (uint16_t)DSH_DEFAULT_BRIDGE_PORT;
@@ -85,6 +107,7 @@ bool device_config_load(device_service_config_t *config)
 {
     if (!config) return false;
     memset(config, 0, sizeof(*config));
+    config->gateway_port = 8883;
     config->bridge_port = 3082;
 
     nvs_handle_t handle = 0;
@@ -93,6 +116,12 @@ bool device_config_load(device_service_config_t *config)
         return true;
     }
 
+    read_string(handle, "gateway_host", config->gateway_host, sizeof(config->gateway_host));
+    uint16_t gateway_port = 0;
+    if (nvs_get_u16(handle, "gateway_port", &gateway_port) == ESP_OK && gateway_port > 0) config->gateway_port = gateway_port;
+    read_string(handle, "tenant_id", config->tenant_id, sizeof(config->tenant_id));
+    read_string(handle, "device_id", config->device_id, sizeof(config->device_id));
+    read_string(handle, "device_cred", config->device_credential, sizeof(config->device_credential));
     read_string(handle, "bridge_host", config->bridge_host, sizeof(config->bridge_host));
     uint16_t port = 0;
     if (nvs_get_u16(handle, "bridge_port", &port) == ESP_OK && port > 0) config->bridge_port = port;
@@ -123,7 +152,12 @@ esp_err_t device_config_save(const device_service_config_t *config)
     esp_err_t err = nvs_open(TAG_NAMESPACE, NVS_READWRITE, &handle);
     if (err != ESP_OK) return err;
 
-    err = nvs_set_str(handle, "bridge_host", config->bridge_host);
+    err = nvs_set_str(handle, "gateway_host", config->gateway_host);
+    if (err == ESP_OK) err = nvs_set_u16(handle, "gateway_port", config->gateway_port > 0 ? config->gateway_port : 8883);
+    if (err == ESP_OK) err = nvs_set_str(handle, "tenant_id", config->tenant_id);
+    if (err == ESP_OK) err = nvs_set_str(handle, "device_id", config->device_id);
+    if (err == ESP_OK) err = nvs_set_str(handle, "device_cred", config->device_credential);
+    if (err == ESP_OK) err = nvs_set_str(handle, "bridge_host", config->bridge_host);
     if (err == ESP_OK) err = nvs_set_u16(handle, "bridge_port", config->bridge_port > 0 ? config->bridge_port : 3082);
     if (err == ESP_OK) err = nvs_set_str(handle, "bridge_token", config->bridge_token);
     if (err == ESP_OK) err = nvs_set_str(handle, "qq_email", config->qq_email);
