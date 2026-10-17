@@ -37,7 +37,9 @@ A production package must declare a browser bundle:
 }
 ```
 
-Install through DSH's Plugin Manager only after building against the exact runtime version (`0.2.0-rc.2` in this installation). It must run inside the authenticated Web client; a standalone Node process cannot access `ctx.remote` or the browser Remote Event waterfall.
+The repository now includes a minimal prebuilt `lib/client.js` bundle for the exact observed runtime shape (`0.2.0-rc.2`). It must run inside the authenticated Web client; a standalone Node process cannot access `ctx.remote` or the browser Remote Event waterfall.
+
+> Install only through the DSH Plugin Manager with explicit human approval. The bundle is intentionally limited to the built-in `approval/request` Remote Event and falls back to DSH's normal approval UI on every relay error or timeout.
 
 ## Approval listener contract
 

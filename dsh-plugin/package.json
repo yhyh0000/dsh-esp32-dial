@@ -4,6 +4,11 @@
   "private": true,
   "type": "module",
   "description": "Browser-session DSH adapter for Agent Satellite transient approvals",
+  "main": "./lib/client.js",
+  "files": [
+    "lib/client.js",
+    "README.md"
+  ],
   "exports": {
     "./client": "./lib/client.js"
   },

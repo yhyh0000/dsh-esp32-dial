@@ -26,3 +26,5 @@ firmware/main/device_build_defaults.h
 # Gateway local registry and deployment credentials
 gateway/state/
 gateway/.env
+# Locally packed DSH plugin artifacts
+dsh-plugin/*.tgz
