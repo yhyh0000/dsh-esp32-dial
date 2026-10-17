@@ -109,6 +109,12 @@ function loadToken() {
 
 const TOKEN = loadToken();
 
+/** Only the authenticated DSH browser plugin may use plugin relay endpoints. */
+function isLoopback(address) {
+	const value = String(address ?? "").replace(/^::ffff:/, "");
+	return value === "127.0.0.1" || value === "::1";
+}
+
 /** Timestamped line log; the bridge is meant to be watched in a terminal. */
 function log(message) {
 	const at = new Date().toISOString().slice(11, 19);
@@ -626,6 +632,14 @@ function activeServiceConfig() {
 /** Pending asks by id, so an `answer` frame can be routed back to DSH. */
 const pendingAsks = new Map();
 
+/**
+ * Pending approvals owned by the authenticated DSH browser plugin.
+ * Unlike the legacy direct /api/respond code path, these entries are settled by
+ * the plugin's Remote Event waterfall, so no DSH browser cookie ever leaves the
+ * GUI. The local bridge merely long-polls one decision from the ESP32.
+ */
+const pluginApprovals = new Map();
+
 /** Latest derived state, and whether DSH is currently reachable. */
 let lastState;
 let lastSnapshot;
@@ -941,6 +955,21 @@ async function onDeviceFrame(device, text) {
 			break;
 
 		case "answer": {
+			const pluginApproval = pluginApprovals.get(frame.id);
+			if (pluginApproval !== undefined) {
+				if (Date.now() > pluginApproval.expiresAt) {
+					pluginApprovals.delete(frame.id);
+					log(`plugin approval expired: ${frame.id}`);
+					return;
+				}
+				if (frame.choice !== "allowed-once" && frame.choice !== "rejected") {
+					log(`plugin approval invalid decision: ${frame.id}`);
+					return;
+				}
+				pluginApproval.decision = frame.choice;
+				log(`plugin approval decision: ${frame.id} → ${frame.choice}`);
+				break;
+			}
 			const ask = pendingAsks.get(frame.id);
 			if (ask === undefined) { log(`answer for unknown ask ${frame.id}`); return; }
 			pendingAsks.delete(frame.id);
@@ -1355,6 +1384,7 @@ const server = createServer((req, res) => {
 			gatewayConfigured: Boolean(gatewayClient?.enabled),
 			devices: devices.size,
 			pendingAsks: pendingAsks.size,
+			pluginApprovals: pluginApprovals.size,
 			companion: {
 				quota: companionState.quota.status,
 				mail: companionState.mail.status,
@@ -1364,6 +1394,65 @@ const server = createServer((req, res) => {
 		}, null, 2);
 		res.writeHead(200, { "content-type": "application/json; charset=utf-8" });
 		res.end(body);
+		return;
+	}
+	// /plugin/approval/request — trusted DSH browser plugin asks the local
+	// bridge to render one transient approval. The plugin owns the DSH waterfall;
+	// this endpoint never accepts a DSH cookie or remote origin.
+	if (req.url === "/plugin/approval/request" && req.method === "POST") {
+		const chunks = [];
+		req.on("data", (c) => chunks.push(c));
+		req.on("end", () => {
+			try {
+				if (!isLoopback(req.socket.remoteAddress)) throw new Error("loopback only");
+				const p = JSON.parse(Buffer.concat(chunks).toString("utf8"));
+				const id = `plugin-${randomBytes(8).toString("hex")}`;
+				const ttlMs = Math.min(Math.max(Number(p.ttlMs ?? 60000), 1000), 120000);
+				const frame = {
+					t: "ask", id, kind: "approval",
+					title: `允许 ${String(p.toolName ?? "工具").slice(0, 28)} 运行？`,
+					body: String(p.reason ?? "需要一次性确认").slice(0, 160),
+					options: [
+						{ id: "allowed-once", label: "允许一次", style: "primary" },
+						{ id: "rejected", label: "拒绝", style: "danger" },
+					],
+					expiresAt: Date.now() + ttlMs,
+				};
+				pluginApprovals.set(id, { expiresAt: frame.expiresAt, decision: null });
+				broadcast(frame);
+				broadcast({ t: "beep", kind: "waiting" });
+				setTimeout(() => pluginApprovals.delete(id), ttlMs + 1000).unref();
+				res.writeHead(201, { "content-type": "application/json" });
+				res.end(JSON.stringify({ ok: true, approvalId: id, expiresAt: frame.expiresAt }));
+			} catch (error) {
+				res.writeHead(400, { "content-type": "application/json" });
+				res.end(JSON.stringify({ ok: false, error: error.message }));
+			}
+		});
+		return;
+	}
+	// /plugin/approval/:id/wait — long-poll result for the same authenticated
+	// DSH browser plugin. A request without a decision returns 204 on expiry.
+	const pluginWait = (req.url ?? "").match(/^\/plugin\/approval\/([a-z0-9-]+)\/wait$/);
+	if (pluginWait && req.method === "GET") {
+		if (!isLoopback(req.socket.remoteAddress)) { res.writeHead(403); res.end(); return; }
+		const id = pluginWait[1];
+		const deadline = Date.now() + 65000;
+		const timer = setInterval(() => {
+			const approval = pluginApprovals.get(id);
+			if (approval?.decision) {
+				clearInterval(timer);
+				res.writeHead(200, { "content-type": "application/json" });
+				res.end(JSON.stringify({ ok: true, outcome: approval.decision }));
+				return;
+			}
+			if (approval === undefined || Date.now() >= approval.expiresAt || Date.now() >= deadline) {
+				clearInterval(timer);
+				pluginApprovals.delete(id);
+				res.writeHead(204); res.end();
+			}
+		}, 150);
+		req.on("close", () => clearInterval(timer));
 		return;
 	}
 	// /test/ask — inject an ask (used by the self-test harness; otherwise

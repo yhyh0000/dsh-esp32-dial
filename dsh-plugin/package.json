@@ -1,0 +1,27 @@
+{
+  "name": "@suhmyh/dsh-esp32-satellite",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Browser-session DSH adapter for Agent Satellite transient approvals",
+  "exports": {
+    "./client": "./lib/client.js"
+  },
+  "dsh": {
+    "client": {
+      "platform": "web",
+      "inject": [
+        "@deepseek-ai/dsh-api-remotes",
+        "@deepseek-ai/dsh-api-session-controller"
+      ]
+    }
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "~4.0.4"
+  },
+  "dshSatellite": {
+    "status": "prototype-only",
+    "requiresRuntime": "0.2.0-rc.2",
+    "note": "Build client.ts against the exact DSH runtime before installation."
+  }
+}
