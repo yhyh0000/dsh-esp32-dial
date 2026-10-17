@@ -120,9 +120,10 @@ static esp_err_t config_page_handler(httpd_req_t *request)
     device_config_apply_wifi_defaults((char *)wifi.sta.ssid, sizeof(wifi.sta.ssid),
                                       (char *)wifi.sta.password, sizeof(wifi.sta.password));
 
-    char ssid[96], gateway[192], tenant[128], device_id[160];
+    char ssid[96], gateway[192], tenant[128], device_id[160], bridge[192];
     html_escape((const char *)wifi.sta.ssid, ssid, sizeof(ssid));
     html_escape(config.gateway_host, gateway, sizeof(gateway));
+    html_escape(config.bridge_host, bridge, sizeof(bridge));
     html_escape(config.tenant_id, tenant, sizeof(tenant));
     html_escape(config.device_id, device_id, sizeof(device_id));
 
@@ -148,9 +149,13 @@ static esp_err_t config_page_handler(httpd_req_t *request)
         "<label>Tenant / 空间 ID<input name='tenant_id' value='%s' maxlength='63' placeholder='例如 personal'></label>"
         "<label>设备 ID<input name='device_id' value='%s' maxlength='79' placeholder='例如 badge-185b-office'></label>"
         "<label>配对凭据<input name='device_credential' type='password' maxlength='127' autocomplete='new-password' placeholder='扫码或从 Gateway 控制台获取；已配置可留空'></label>"
-        "</section><div class='actions'><button type='submit'>保存并连接 Gateway</button><p class='hint'>网关上线后，在手机或网页控制台选择要连接的 Host、Agent 与 Session。设备只接收路由后的状态、输入和单次审批请求。</p></div></form>"
+        "</section><section><h2>3 · 本地 DSH Bridge（当前固件必填）</h2><p class='section-note'>DSH Guard 当前通过已验证的局域网 WebSocket Bridge 工作。Gateway/MQTTS 是下一阶段的远程路由通道；在其数据面完成前，本栏用于真实 DSH 状态和审批。</p>"
+        "<div class='row'><label>Bridge 主机/IP<input name='bridge_host' value='%s' maxlength='95' placeholder='例如 192.168.1.10'></label>"
+        "<label>端口<input name='bridge_port' type='number' value='%u' min='1' max='65535'></label></div>"
+        "<label>设备 Token<input name='bridge_token' type='password' maxlength='127' autocomplete='new-password' placeholder='运行 node bridge.js 后显示；已配置可留空'></label>"
+        "</section><div class='actions'><button type='submit'>保存并连接 DSH Guard</button><p class='hint'>当前 DSH Guard 使用本地 Bridge 显示 DSH 状态和审批。Gateway 字段保留给后续远程 MQTTS 路由，二者不会共享 DSH 凭据。</p></div></form>"
         "<p class='hint'>操作：连接热点 <code>CODEX-DIAL-SETUP</code>（密码 <code>codexsetup</code>），打开 <code>http://192.168.4.1/settings</code>。</p></main></html>",
-        ssid, gateway, config.gateway_port, tenant, device_id);
+        ssid, gateway, config.gateway_port, tenant, device_id, bridge, config.bridge_port);
     esp_err_t result = send_text(request, "text/html; charset=utf-8", page, true);
     free(page);
     return result;
@@ -187,12 +192,18 @@ static esp_err_t save_handler(httpd_req_t *request)
     device_config_load(&config);
     char value[DEVICE_CONFIG_SUB2API_TOKEN_LEN];
     if (form_value(body, "gateway_host", value, sizeof(value))) copy_text(config.gateway_host, sizeof(config.gateway_host), value);
+    if (form_value(body, "bridge_host", value, sizeof(value))) copy_text(config.bridge_host, sizeof(config.bridge_host), value);
+    if (form_value(body, "bridge_token", value, sizeof(value)) && value[0]) copy_text(config.bridge_token, sizeof(config.bridge_token), value);
     if (form_value(body, "tenant_id", value, sizeof(value))) copy_text(config.tenant_id, sizeof(config.tenant_id), value);
     if (form_value(body, "device_id", value, sizeof(value))) copy_text(config.device_id, sizeof(config.device_id), value);
     if (form_value(body, "device_credential", value, sizeof(value)) && value[0]) copy_text(config.device_credential, sizeof(config.device_credential), value);
     if (form_value(body, "gateway_port", value, sizeof(value))) {
         const unsigned long port = strtoul(value, NULL, 10);
         if (port > 0 && port <= 65535) config.gateway_port = (uint16_t)port;
+    }
+    if (form_value(body, "bridge_port", value, sizeof(value))) {
+        const unsigned long port = strtoul(value, NULL, 10);
+        if (port > 0 && port <= 65535) config.bridge_port = (uint16_t)port;
     }
 
     wifi_config_t wifi = {0};

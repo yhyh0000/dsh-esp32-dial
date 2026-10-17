@@ -7,6 +7,7 @@
 #include "nvs.h"
 #include "lvgl.h"
 #include "esp_brookesia.hpp"
+#include "device_config.h"
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -95,29 +96,29 @@ DshApp::DshApp(bool use_status_bar, bool use_navigation_bar):
 
 void DshApp::loadBridgeConfig()
 {
-    // Keep compatibility with the original DSH dial's NVS namespace. The
-    // Waveshare Settings app owns WiFi; this app only reads bridge settings.
+    // DSH Guard currently uses the verified LAN bridge transport. The same
+    // device configuration is shared with provisioning; gateway/MQTTS fields
+    // are reserved for the later remote transport rather than silently falling
+    // back to Companion credentials.
     _host[0] = '\0';
     _token[0] = '\0';
     _port = 3082;
 
-    nvs_handle_t nvs = 0;
-    if (nvs_open("dsh-dial", NVS_READONLY, &nvs) == ESP_OK) {
-        size_t len = sizeof(_host);
-        nvs_get_str(nvs, "host", _host, &len);
-        uint16_t port = 0;
-        if (nvs_get_u16(nvs, "port", &port) == ESP_OK && port > 0) _port = port;
-        len = sizeof(_token);
-        nvs_get_str(nvs, "token", _token, &len);
-        nvs_close(nvs);
+    device_service_config_t config;
+    device_config_load(&config);
+    if (config.bridge_host[0] && config.bridge_token[0]) {
+        snprintf(_host, sizeof(_host), "%s", config.bridge_host);
+        snprintf(_token, sizeof(_token), "%s", config.bridge_token);
+        _port = config.bridge_port > 0 ? config.bridge_port : 3082;
     }
+
     if (!_host[0] || !_token[0]) {
         _uri[0] = '\0';
-        ESP_LOGW(TAG, "Bridge config missing; set host, port and token in NVS");
+        ESP_LOGW(TAG, "DSH bridge not configured; use setup portal before opening DSH Guard");
         return;
     }
     snprintf(_uri, sizeof(_uri), "ws://%s:%u/dev?token=%s", _host, _port, _token);
-    ESP_LOGI(TAG, "Bridge endpoint: ws://%s:%u/dev", _host, _port);
+    ESP_LOGI(TAG, "DSH bridge endpoint: ws://%s:%u/dev", _host, _port);
 }
 
 void DshApp::setConnection(const char *text, uint32_t color)
@@ -447,7 +448,9 @@ bool DshApp::run(void)
     }
     lv_obj_add_flag(_ask_panel, LV_OBJ_FLAG_HIDDEN);
 
-    // 扫货命中通知面板（收到 bridge 的 notify 帧时亮起）
+    // Generic DSH notification panel. The old notification fields remain wire
+    // compatible with the bridge, but the UI no longer presents marketplace
+    // semantics: it is a low-priority Agent/DSH alert surface.
     _notify_panel = lv_obj_create(_screen);
     lv_obj_set_size(_notify_panel, 320, 300);
     lv_obj_align(_notify_panel, LV_ALIGN_CENTER, 0, 20);

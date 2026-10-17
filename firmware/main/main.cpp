@@ -18,7 +18,7 @@
 #include "./dark/stylesheet.hpp"
 #include "app_msg/submenu_ui/set_wifi_service.h"
 #include "app_codex/codex_app.hpp"
-#include "app_companion/companion_app.hpp"
+#include "app_dsh/dsh_app.hpp"
 #include "app_xiaolan/xiaolan_widget.hpp"
 
 using namespace esp_brookesia;
@@ -148,24 +148,25 @@ extern "C" void app_main(void)
             }
         });
 
-        /* Keep both native apps: Companion is the new primary surface, Codex remains available for the agent console. */
+        /* DSH Guard is the product entry point. It consumes the verified
+         * state/ask/answer protocol from bridge.js and is intentionally launched
+         * directly instead of the unrelated Companion (mail/quota) app. */
+        auto dshApp = DshApp::requestInstance(false, false);
+        ESP_UTILS_CHECK_FALSE_EXIT(phone->installApp(dshApp), "Install DshApp failed");
+
+        /* Codex remains an optional secondary console; it is not the default
+         * surface while validating the DSH state and approval workflow. */
         auto codexApp = CodexApp::requestInstance();
         ESP_UTILS_CHECK_FALSE_EXIT(phone->installApp(codexApp), "Install CodexApp failed");
-        // Companion owns the full circular canvas; the stock system status bar
-        // would otherwise consume the top strip and collide with the app header.
-        auto companionApp = CompanionApp::requestInstance(false, false);
-        ESP_UTILS_CHECK_FALSE_EXIT(phone->installApp(companionApp), "Install CompanionApp failed");
 
-        /* Xiaolan owns page 0 of the launcher.  It is a home-page widget, not
-         * an application icon, so swiping right exposes the Codex page. */
+        /* Keep Xiaolan only as a launcher decoration, never as the DSH product
+         * surface. Opening the DSH guard must take precedence. */
         auto *launcher = phone->getDisplay().getAppLauncher();
         ESP_UTILS_CHECK_FALSE_EXIT(
             launcher && g_xiaolan.begin(launcher->getPageMainObject(0)),
             "Install Xiaolan desktop pet failed");
 
-        /* Companion is the product entry point.  Keep the stock launcher
-         * available underneath it, but do not make users open an icon first. */
-        ESP_UTILS_CHECK_FALSE_EXIT(phone->launchApp(companionApp), "Launch CompanionApp failed");
+        ESP_UTILS_CHECK_FALSE_EXIT(phone->launchApp(dshApp), "Launch DshApp failed");
 
         /* Create a timer to update the clock */
         lv_timer_create([](lv_timer_t *t) {
